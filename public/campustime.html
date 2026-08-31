@@ -204,13 +204,15 @@
   .gate-btn:active{border-color:var(--red);background:var(--red-dim)}
   .gate-k{font-size:17px;font-weight:800;letter-spacing:-.03em}
   .gate-d{font-size:13px;color:var(--sub);margin-top:6px;line-height:1.5}
-  .mk-item{display:block;width:100%;text-align:left;background:var(--card);padding:14px;
+  .mk-item{display:block;width:100%;text-align:left;background:var(--card);padding:12px 14px;
     border-bottom:1px solid var(--line)}
   .mk-item:active{background:#FAFAFB}
-  .mk-name{font-size:15px;font-weight:700;letter-spacing:-.025em;line-height:1.35}
-  .mk-own{font-size:12px;color:var(--sub);margin-top:5px}
-  .mk-price{font-size:15px;font-weight:800;margin-top:8px}
-  .mk-chg{font-size:12px;font-weight:700;margin-top:4px}
+  .mk-row{display:flex;gap:12px;align-items:flex-start}
+  .mk-row-b{flex:1;min-width:0}
+  .mk-name{font-size:14.5px;font-weight:700;letter-spacing:-.025em;line-height:1.35}
+  .mk-own{font-size:12px;color:var(--sub);margin-top:4px}
+  .mk-price{font-size:15px;font-weight:800;margin-top:6px;color:var(--red)}
+  .mk-chg{font-size:12px;font-weight:700;margin-top:3px}
   .mk-chg.up{color:var(--red)}
   .mk-chg.dn{color:#3B7DD8}
   .mk-chg.z{color:var(--faint)}
@@ -223,13 +225,9 @@
   .mk-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
   .mk-tag{font-size:11px;font-weight:700;color:var(--sub);background:var(--bg);
     border:1px solid var(--line);border-radius:6px;padding:3px 7px}
-  .mk-shop{padding:0 0 8px}
-  .mk-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 12px 12px}
-  .mk-card{display:flex;flex-direction:column;text-align:left;background:var(--card);
-    border:1px solid var(--line);border-radius:14px;overflow:hidden;padding:0}
-  .mk-card:active{border-color:#ddd}
   .mk-th{height:108px;display:grid;place-items:center;font-size:13px;font-weight:800;
     letter-spacing:-.02em;color:#6B7280}
+  .mk-th.sm{width:64px;height:64px;border-radius:10px;flex:0 0 auto;font-size:11px}
   .mk-th.k0{background:#F6EBE4;color:#A05A3C}
   .mk-th.k1{background:#E7EDF6;color:#3D5A80}
   .mk-th.k2{background:#E4F0EA;color:#2F6B52}
@@ -238,14 +236,12 @@
   .mk-th.k5{background:#E8F2F4;color:#2F6A78}
   .mk-th.k6{background:#EEEAE4;color:#6A5848}
   .mk-th.k7{background:#EEF0F3;color:#5B6570}
-  .mk-card-b{padding:10px 11px 12px}
-  .mk-card .mk-name{font-size:13.5px;line-height:1.35;height:36px;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .mk-card .mk-own{font-size:11px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .mk-card .mk-price{font-size:15px;font-weight:800;color:var(--red);margin-top:8px}
-  .mk-card .mk-chg{font-size:11px;margin-top:2px}
-  .mk-card .mk-tags{margin-top:6px}
-  .mk-card .mk-tag{font-size:10px;padding:2px 6px}
+  .mk-cats{display:flex;gap:6px;overflow-x:auto;padding:10px 12px;background:var(--card);
+    border-bottom:1px solid var(--line);-webkit-overflow-scrolling:touch}
+  .mk-cat{flex:0 0 auto;font-size:12.5px;font-weight:700;padding:7px 12px;border-radius:999px;
+    background:var(--bg);color:var(--sub);border:1px solid var(--line);white-space:nowrap}
+  .mk-cat.on{background:var(--red-dim);color:var(--red);border-color:transparent}
+  .mk-cat small{font-weight:700;color:inherit;opacity:.7;margin-left:4px}
   .rarity{display:inline-block;font-size:10px;font-weight:800;border-radius:5px;
     padding:2px 6px;margin-right:6px;vertical-align:2px}
   .r-rare{color:#8A4B00;background:#FFE7C2}
@@ -350,7 +346,7 @@
   .pull.load .ring{animation:spin .65s linear infinite;border-top-color:var(--red);
     border-color:var(--red-dim);opacity:1;transform:none}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .p-item.fresh,.mk-item.fresh,.mk-card.fresh{animation:pop .45s cubic-bezier(.2,.8,.3,1)}
+  .p-item.fresh,.mk-item.fresh{animation:pop .45s cubic-bezier(.2,.8,.3,1)}
   @keyframes pop{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
   .p-item.fresh .p-title::after{content:'NEW';font-size:9.5px;font-weight:800;color:var(--red);
     background:var(--red-dim);border-radius:4px;padding:2px 5px;margin-left:6px;vertical-align:2px;
@@ -658,31 +654,19 @@ const DEFAULT_MARKET=[
   {name:'김대현 교수가 쓰던 공학용 계산기', owner:'김대현 교수', price:1200, rarity:'희귀',
    traits:['전자기기','진지함'],
    desc:'연구실 정리하면서 나왔다는 물건. 뒷면에 이름이 새겨져 있다.',
-   reactions:{
-     up:['이거 이 가격이었나','어제 살걸','지금이라도 사야 하나','저번에 반값이었는데'],
-     mid:['이게 올라오네','적당한 것 같기도','쓸 사람은 쓰겠지','상태는 괜찮아 보이는데'],
-     down:['이걸 누가 사','안 팔리는 이유가 있지','아직도 안 나갔네','가격 보고 웃었다']}},
+   comments:['이게 올라오네','상태는 괜찮아 보이는데','연구실 물건이라 든든하다','이거 이 가격이었나','쓸 사람은 쓰겠지','뒷면에 이름 새겨진 거 실화냐','어제 살걸']},
   {name:'과대 민지가 메던 에코백', owner:'과대 민지', price:800, rarity:'보통',
    traits:['옷','허세'],
    desc:'행사 끝나고 정리하다 나왔다. 안쪽에 과 로고 패치가 붙어 있다.',
-   reactions:{
-     up:['그 가방 이 값이라고?','유니크한데 지금이네','과대 쓰던 거라 희소하다','지나고 보니 괜찮네'],
-     mid:['에코백이네','쓸 만해 보이긴 한다','행사용인가 보다','무난하다'],
-     down:['그냥 에코백인데','누가 중고 가방을','아직 있네','그냥 새거 사지']}},
+   comments:['에코백이네','과대 쓰던 거라 희소하다','안쪽에 패치 있다며','쓸 만해 보이긴 한다','행사용인가 보다','유니크한데 지금이네']},
   {name:'조교 형이 놓고 간 텀블러', owner:'조교 형', price:500, rarity:'흔함',
    traits:['생활','낡음'],
    desc:'과 사무실 싱크대 위에 한동안 있던 것. 스티커가 반쯤 벗겨져 있다.',
-   reactions:{
-     up:['그 텀블러 소문났었는데','이 가격이면 빠르다','사무실에서 보던 그거 맞나','의외로 구하기 어렵던데'],
-     mid:['텀블러 하나 올라왔다','무난한 중고네','과 사무실 냄새가 날 듯','쓸 사람은 있을 듯'],
-     down:['스티커 벗겨진 텀블러를','누가 사냐','아직 안 나갔다고?','이건 좀 오래됐다']}},
+   comments:['텀블러 하나 올라왔다','무난한 중고네','스티커 반쯤 벗겨졌대','과 사무실 냄새가 날 듯','쓸 사람은 있을 듯','이건 좀 오래됐다','그 텀블러 소문났었는데']},
   {name:'김대현 교수 연구실 책상 스탠드', owner:'김대현 교수', price:1800, rarity:'보통',
    traits:['가구','쓸쓸함'],
    desc:'자리 옮기면서 나왔다. 각도 조절되고 전구는 얼마 전에 갈았다.',
-   reactions:{
-     up:['스탠드가 이 값이라고','연구실 물건이라 든든하다','조명 괜찮은데 지금이네','어제 보고 말았다'],
-     mid:['스탠드네','책상 위에 두면 될 듯','무난해 보인다','중고 조명 처음 본다'],
-     down:['스탠드까지 중고로','전구 갈았다는 게 함정','아직 남아 있네','새 거 사면 이 가격인데']}}
+   comments:['스탠드네','책상 위에 두면 될 듯','각도 조절된대','연구실 조명 괜찮다','무난해 보인다','전구는 갈았다고 함','중고 조명 처음 본다']}
 ];
 
 const DEFAULT_MTPL=`너는 한국 대학 익명 커뮤니티의 중고장터에 올라올 물품 데이터를 만든다.
@@ -697,11 +681,14 @@ const DEFAULT_MTPL=`너는 한국 대학 익명 커뮤니티의 중고장터에 
       "rarity": "희귀",
       "traits": ["전자기기", "진지함"],
       "desc": "연구실 정리하면서 나왔다는 물건. 뒷면에 이름이 새겨져 있다.",
-      "reactions": {
-        "up":   ["이거 이 가격이었나", "어제 살걸", "지금이라도 사야 하나", "저번에 반값이었는데"],
-        "mid":  ["이게 올라오네", "적당한 것 같기도", "쓸 사람은 쓰겠지", "상태는 괜찮아 보이는데"],
-        "down": ["이걸 누가 사", "안 팔리는 이유가 있지", "아직도 안 나갔네", "가격 보고 웃었다"]
-      }
+      "comments": [
+        "이게 올라오네",
+        "상태는 괜찮아 보이는데",
+        "연구실 물건이라 든든하다",
+        "이거 이 가격이었나",
+        "쓸 사람은 쓰겠지",
+        "어제 살걸"
+      ]
     }
   ]
 }
@@ -718,14 +705,12 @@ const DEFAULT_MTPL=`너는 한국 대학 익명 커뮤니티의 중고장터에 
   목록 밖 단어를 만들지 마라. 한 묶음 안에서 종류·기운이 겹치지 않게 골고루 섞어라.
   예: 과한 패딩은 ["옷","과함"], 스티커 범벅 텀블러는 ["생활","천박함"], 밑줄 가득한 전공서는 ["교재","애잔함"].
 - desc — 한두 문장. 어떻게 시장에 나왔는지가 드러나면 좋다. 특성이 느껴져도 특성 단어를 문장에 그대로 박지 마라.
-- reactions — up, mid, down 각각 4~6개.
-  up: 값이 오른 상태로 나왔을 때의 반응. 아쉬움, 놀람, 뒤늦은 관심.
-  mid: 처음 올라왔을 때의 반응. 무덤덤한 관찰, 가벼운 관심.
-  down: 값이 떨어진 상태로 나왔을 때의 반응. 비웃음, 무관심, 안 팔리는 것에 대한 언급.
-  감상평은 물건의 기운을 반영해라. 천박하면 비웃는 쪽이, 애잔하면 안쓰러운 쪽이 섞인다. 특성 단어를 감상평에 직접 쓰지 마라.
+- comments — 문자열 4~8개. 구경꾼이 물건을 보고 하는 혼잣말.
+  한 문장, 길어도 20자 안쪽. 물건과 상태에 대해 말한다. 시세가 올랐다거나 안 팔린다는 말은 쓰지 마라.
+  기운을 반영해라. 천박하면 비웃는 쪽이, 애잔하면 안쓰러운 쪽이 섞인다. 특성 단어를 댓글에 직접 쓰지 마라.
 
 내용 규칙:
-- 반응은 전부 구경꾼의 감상평이다. 사겠다거나 흥정하는 말은 절대 쓰지 마라.
+- 댓글은 전부 구경꾼의 감상평이다. 사겠다거나 흥정하는 말은 절대 쓰지 마라.
 - 판매자에게 말을 거는 형태도 쓰지 마라. 혼잣말이나 옆사람에게 하는 말처럼.
 - 한 문장, 길어도 20자 안쪽. 이모지 금지.
 - 인물을 조롱하거나 인신공격하지 마라. 물건과 가격에 대해서만 말한다.
@@ -787,7 +772,7 @@ function cfgNum(k, fb){
 /* ===================== 상태 ===================== */
 let DB=null;
 const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen:'',pasted:'',genMode:'post',tplEdit:false,tplDraft:null,ptplEdit:false,ptplDraft:null,
-  qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,quota:null,dirty:false,mkPrice:'',
+  qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
   backupText:'',ppaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
   fold:{import:1,make:1},
   g:{n:'12',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
@@ -1443,15 +1428,23 @@ function normTraits(a){
   const vibe=t.find(x=>VIBE.indexOf(x)>=0);
   return [kind,vibe].filter(Boolean);
 }
+function rxPool(it){
+  const from=x=>{
+    if(typeof x==='string') return x.trim();
+    if(x&&typeof x==='object'&&x.text) return String(x.text).trim();
+    return '';
+  };
+  const raw=it.comments||it.reactions;
+  if(Array.isArray(raw)) return raw.map(from).filter(Boolean);
+  if(raw&&typeof raw==='object')
+    return [].concat(raw.up||[], raw.mid||[], raw.down||[]).map(from).filter(Boolean);
+  return [];
+}
 function seedMarket(){
   return DEFAULT_MARKET.map((x,i)=>({
     id:i+1, name:x.name, owner:x.owner, price:x.price, rarity:x.rarity, desc:x.desc,
     traits:(x.traits||[]).slice(),
-    reactions:{
-      up:(x.reactions.up||[]).slice(),
-      mid:(x.reactions.mid||[]).slice(),
-      down:(x.reactions.down||[]).slice()
-    },
+    comments:rxPool(x),
     quote:x.price, hist:[{at:0,p:x.price}], backAt:0
   }));
 }
@@ -1468,7 +1461,6 @@ function isMarketRow(f){
   return !!(f&&typeof f==='object'&&f.name&&f.owner&&!f.title);
 }
 function packMarket(it){
-  const r=it.reactions||{};
   let id=uid();
   while((DB.market||[]).some(x=>x.id===id)) id=uid();
   return {
@@ -1477,11 +1469,7 @@ function packMarket(it){
     rarity:['흔함','보통','희귀'].indexOf(it.rarity)>=0?it.rarity:'보통',
     desc:String(it.desc||''),
     traits:normTraits(it.traits),
-    reactions:{
-      up:(r.up||[]).map(String),
-      mid:(r.mid||[]).map(String),
-      down:(r.down||[]).map(String)
-    },
+    comments:rxPool(it),
     quote:Math.max(1,+it.price||1000), hist:[], backAt:0
   };
 }
@@ -1556,20 +1544,11 @@ function shuffle(a){
   }
   return a;
 }
-function pickBand(it){
-  if(!it.debuted){ it.debuted=true; return 'mid'; }
-  const live=quoteOf(it);
-  const r=live/Math.max(1,+it.price||1);
-  const band=cfgNum('mBand',0.3);
-  if(r>=1+band) return 'up';
-  if(r<=1-band) return 'down';
-  return 'mid';
-}
 function startListing(it){
-  const band=pickBand(it);
-  it.band=band;
-  const pool=((it.reactions||{})[band]||[]).map(String).filter(Boolean);
-  it.rx=shuffle(pool.slice()).slice(0, Math.min(3, Math.max(2, pool.length)));
+  const pool=rxPool(it);
+  let n=pool.length;
+  if(n>8) n=4+Math.floor(Math.random()*5);
+  it.rx=shuffle(pool.slice()).slice(0,n);
   it.rxn=0;
   it.rxAt=DB.clock||0;
 }
@@ -1596,7 +1575,7 @@ function cycleMarket(){
   DB.listed=keep;
   (DB.listed||[]).forEach(id=>{
     const it=marketOf(id);
-    if(it && !it.band) startListing(it);
+    if(it && (!it.rx || it.rx.length<4)) startListing(it);
   });
   return ch;
 }
@@ -1729,36 +1708,53 @@ function kindMark(it){
 function mkRow(it,tag){
   const q=typeof it.quote==='number'?it.quote:quoteOf(it);
   const km=kindMark(it);
-  return `<button class="mk-card${it.id===S.flash?' fresh':''}" data-item="${it.id}">
-      <div class="mk-th ${km.k}">${esc(km.t)}</div>
-      <div class="mk-card-b">
-        <div class="mk-name"><span class="rarity ${rarityClass(it.rarity)}">${esc(it.rarity||'보통')}</span>${
-          tag?`<span class="rarity r2">${tag}</span>`:''}${esc(it.name)}</div>
-        <div class="mk-own">${esc(it.owner||'')}</div>
-        <div class="mk-price">${won(q)}</div>
-        ${quoteChgHTML(it)}
+  return `<button class="mk-item${it.id===S.flash?' fresh':''}" data-item="${it.id}">
+      <div class="mk-row">
+        <div class="mk-th sm ${km.k}">${esc(km.t)}</div>
+        <div class="mk-row-b">
+          <div class="mk-name"><span class="rarity ${rarityClass(it.rarity)}">${esc(it.rarity||'보통')}</span>${
+            tag?`<span class="rarity r2">${tag}</span>`:''}${esc(it.name)}</div>
+          <div class="mk-own">${esc(it.owner||'')}</div>
+          <div class="mk-price">${won(q)} 크레딧</div>
+          ${quoteChgHTML(it)}
+        </div>
       </div>
     </button>`;
 }
-function mkGrid(items,title){
-  if(!items.length) return '';
-  return `<div class="sec" style="background:transparent;padding:12px 14px 2px">${title}</div>
-    <div class="mk-grid">${items.join('')}</div>`;
+function mkOwners(list){
+  const seen=new Set(), out=[];
+  (DB.people||[]).forEach(p=>{
+    if(p.name && !seen.has(p.name)){ seen.add(p.name); out.push(p.name); }
+  });
+  list.forEach(it=>{
+    const n=it.owner||'';
+    if(n && !seen.has(n)){ seen.add(n); out.push(n); }
+  });
+  return out;
 }
 function vMarket(){
-  const list=(DB.listed||[]).map(marketOf).filter(Boolean);
+  const all=(DB.listed||[]).map(marketOf).filter(Boolean);
+  const cat=S.mkCat||'';
+  const list=cat?all.filter(it=>it.owner===cat):all;
   const mine=(DB.owned||[]).map(o=>marketOf(o.mid)).filter(Boolean);
-  const bar=`<div class="cr-bar"><span class="k">중고장터 · 매물 ${list.length}</span><span class="v">${won(DB.credit)}</span></div>`;
+  const owners=mkOwners(all);
+  const bar=`<div class="cr-bar"><span class="k">중고장터 · 매물 ${all.length}</span><span class="v">${won(DB.credit)}</span></div>`;
+  const cats=`<div class="mk-cats">
+      <button class="mk-cat ${!cat?'on':''}" data-mkcat="*">전체<small>${all.length}</small></button>
+      ${owners.map(n=>`<button class="mk-cat ${cat===n?'on':''}" data-mkcat="${esc(n)}">${esc(n)}<small>${all.filter(it=>it.owner===n).length}</small></button>`).join('')}
+    </div>`;
   const waits=(DB.morders||[]).map(o=>{
     const it=marketOf(o.mid); if(!it) return '';
     return mkRow(it, o.side==='buy'?'매수 대기':'매도 대기');
   }).filter(Boolean);
-  let html=bar;
-  html+=mkGrid(mine.map(it=>mkRow(it,'보유')), '내 물건 '+mine.length+'개');
-  html+=mkGrid(waits, '주문 대기 '+waits.length+'건 · 취소 불가');
-  html+=`<div class="sec" style="background:transparent;padding:12px 14px 2px">전체 매물 ${list.length}개</div>`;
-  if(!list.length) html+=`<div class="empty">${mine.length?'시장에 나온 매물이 없습니다.':'올라온 매물이 없습니다.'}</div>`;
-  else html+=`<div class="mk-grid">${list.map(it=>mkRow(it)).join('')}</div>`;
+  let html=bar+cats;
+  if(!cat){
+    if(mine.length) html+=`<div class="sec" style="background:var(--card)">내 물건 ${mine.length}개</div>`+mine.map(it=>mkRow(it,'보유')).join('');
+    if(waits.length) html+=`<div class="sec" style="background:var(--card)">주문 대기 ${waits.length}건 · 취소 불가</div>`+waits.join('');
+  }
+  html+=`<div class="sec" style="background:var(--card)">${cat?esc(cat)+'의 매물':'전체 매물'} ${list.length}개</div>`;
+  if(!list.length) html+=`<div class="empty">${cat?'이 인물의 매물이 없습니다.':(mine.length?'시장에 나온 매물이 없습니다.':'올라온 매물이 없습니다.')}</div>`;
+  else html+=list.map(it=>mkRow(it)).join('');
   return ptrHTML()+html+pullBtn();
 }
 function vMItem(){
@@ -1788,7 +1784,7 @@ function rxHTML(it){
   const all=it.rx||[], n=it.rxn||0;
   const shown=all.slice(0,n);
   if(!all.length) return '';
-  let h=`<div class="c-head">감상평 ${n}</div>`;
+  let h=`<div class="c-head">댓글 ${n}</div>`;
   h+=shown.map(t=>`<div class="c-item">
       <span class="avatar">?</span>
       <div class="c-main"><div class="c-who">익명</div>
@@ -2555,7 +2551,6 @@ function vStock(){
       ${slider('mLo',c.mLo,'하한 배수','시세가 기준가의 이 비율 아래로 내려가지 않습니다')}
       ${slider('mFill',c.mFill,'체결 시간 배수','호가 유리·불리로 정해진 대기 시간에 곱한다')}
       ${slider('mCred',c.mCred,'크레딧 보상량','공감·댓글·투표로 받는 크레딧 배율')}
-      ${slider('mBand',c.mBand,'감상평 구간 경계','등장 시세가 이 선을 넘으면 상승/하락 감상평')}
       ${slider('mWin',c.mWin,'변동률 비교 구간','현재가를 몇 분 전 값과 비교할지')}`;
   const backup=`<div class="note">데이터는 이 브라우저의 <b>현재 주소</b>에만 저장됩니다.
         파일을 다른 이름으로 다시 받거나 주소가 바뀌면 빈 상태로 시작합니다.
@@ -2786,7 +2781,7 @@ function back(){
 
 document.addEventListener('click',e=>{
   if(!DB) return;
-  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold]');
+  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat]');
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
@@ -2796,6 +2791,10 @@ document.addEventListener('click',e=>{
     nav(d.tab,d.tab); checkAchs(); return;
   }
   if(d.open){ S.post=+d.open; S.replyTo=null; return nav('detail'); }
+  if(d.mkcat){
+    S.mkCat=d.mkcat==='*'?'':d.mkcat;
+    return render();
+  }
   if(d.item){
     const raw=d.item;
     const id=(raw!=='' && +raw===+raw && String(+raw)===String(raw))?+raw:raw;
