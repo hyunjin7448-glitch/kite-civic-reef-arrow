@@ -1085,6 +1085,7 @@ function tick(){
     }
   });
   if(posted) refreshQuotes();
+  if(settleOrders()) ch=true;
   save();
   if(ch) redraw();
   checkAchs();
@@ -1101,12 +1102,7 @@ function pulse(){
       ch=true; return false;
     });
   }
-  if(DB.morders&&DB.morders.length){
-    DB.morders=DB.morders.filter(o=>{
-      if(o.due>now) return true;
-      fillOrder(o); ch=true; return false;
-    });
-  }
+  if(settleOrders()) ch=true;
   if(cycleMarket()) ch=true;
   if(ch){ save(); redraw(); }
   checkAchs();
@@ -1494,7 +1490,7 @@ function mergeMarket(arr){
 function rarityVol(r){ return r==='희귀'?1.6:r==='흔함'?0.7:1; }
 function rarityClass(r){ return r==='희귀'?'r-rare':r==='흔함'?'r-common':'r-mid'; }
 function won(n){ return Math.round(+n||0).toLocaleString('ko-KR'); }
-function marketOf(id){ return (DB.market||[]).find(x=>x.id===id); }
+function marketOf(id){ return (DB.market||[]).find(x=>String(x.id)===String(id)); }
 function winWeight(i){ return i<10?1:i<30?0.5:i<60?0.2:0; }
 function quoteOf(it){
   if(!it) return 0;
@@ -1625,16 +1621,24 @@ function fillWait(side,price,quote){
   const q=Math.max(1,+quote||1), p=Math.max(1,+price||1);
   const fav=side==='buy'?p/q:q/p;
   const mul=Math.max(0.1, cfgNum('mFill',1));
-  if(fav>=1.20) return 2*MIN*mul;
-  if(fav>=0.90) return 8*MIN*mul;
-  if(fav>=0.50) return 40*MIN*mul;
+  if(fav>=1.20) return 90*1000*mul;
+  if(fav>=0.80) return 6*MIN*mul;
+  if(fav>=0.50) return 35*MIN*mul;
   return 72*HOUR*mul;
 }
 function waitLabel(ms){
   if(ms<=0) return '즉시';
   if(ms>=24*HOUR) return '사실상 안 잡힘';
+  if(ms<MIN) return Math.max(1,Math.round(ms/1000))+'초';
   if(ms<HOUR) return '최대 '+Math.round(ms/MIN)+'분';
   return '최대 '+Math.round(ms/HOUR)+'시간';
+}
+function leftLabel(due){
+  const ms=+due-Date.now();
+  if(!(ms>0)) return '곧 체결';
+  if(ms<MIN) return Math.max(1,Math.round(ms/1000))+'초 남음';
+  if(ms<HOUR) return Math.round(ms/MIN)+'분 남음';
+  return Math.round(ms/HOUR)+'시간 남음';
 }
 function isBroke(){
   return (DB.credit||0)<2000 && !(DB.owned||[]).length
@@ -1654,6 +1658,17 @@ function parseMkPrice(q){
   const n=parseInt(String(raw).replace(/[^\d]/g,''),10);
   if(n>0) return n;
   return Math.max(1, +q||1);
+}
+function settleOrders(){
+  if(!DB||!(DB.morders||[]).length) return false;
+  const now=Date.now();
+  let ch=false;
+  DB.morders=DB.morders.filter(o=>{
+    if(+o.due>now) return true;
+    fillOrder(o); ch=true; return false;
+  });
+  if(ch) cycleMarket();
+  return ch;
 }
 function fillOrder(o){
   const it=marketOf(o.mid);
@@ -1795,7 +1810,7 @@ function mkTradeHTML(it,q){
   if(ord){
     const side=ord.side==='buy'?'매수':'매도';
     return `<div class="mk-trade">
-      <div class="mk-wait">${side} ${won(ord.price)} 크레딧 · 체결을 기다리는 중<br>취소할 수 없습니다.</div>
+      <div class="mk-wait">${side} ${won(ord.price)} 크레딧 · ${leftLabel(ord.due)}<br>취소할 수 없습니다.</div>
     </div>`;
   }
   const mine=!!ownedOf(it.id);
@@ -2105,6 +2120,11 @@ function vMine(){
   mine.sort((a,b)=>b.c.at-a.c.at);
   const scrap=DB.posts.filter(p=>p.scrapped);
   const liked=DB.posts.filter(p=>p.liked);
+  const bag=(DB.owned||[]).map(o=>{
+    const it=marketOf(o.mid); if(!it) return null;
+    return {o,it,q:typeof it.quote==='number'?it.quote:quoteOf(it)};
+  }).filter(Boolean);
+  const waits=(DB.morders||[]).filter(x=>x.side==='buy');
   return `<div class="pad">
     <div class="stat-row card" style="display:flex;padding:16px 0;text-align:center">
       <div style="flex:1"><b style="display:block;font-size:18px;font-weight:800">${mine.length}</b>
@@ -2113,8 +2133,24 @@ function vMine(){
         <span style="font-size:11.5px;color:var(--sub)">스크랩</span></div>
       <div style="flex:1;border-left:1px solid var(--line)"><b style="display:block;font-size:18px;font-weight:800">${liked.length}</b>
         <span style="font-size:11.5px;color:var(--sub)">공감한 글</span></div>
+      <div style="flex:1;border-left:1px solid var(--line)"><b style="display:block;font-size:18px;font-weight:800">${bag.length}</b>
+        <span style="font-size:11.5px;color:var(--sub)">수집품</span></div>
     </div>
     ${achListHTML()}
+    <div class="card" style="margin-top:10px">
+      <div class="sec">수집품 ${bag.length}개 · ${won(DB.credit)}</div>
+      ${bag.length?bag.map(x=>`<button class="mrow" data-item="${x.it.id}">
+          <div class="txt" style="font-weight:700">${esc(x.it.name)}</div>
+          <div class="tm">${esc(x.it.owner||'')} · 산 값 ${won(x.o.cost)} · 지금 ${won(x.q)}</div></button>`).join('')
+        :`<div class="note" style="color:var(--faint)">시장에서 물건을 사면 여기에 쌓입니다.</div>`}
+      ${waits.length?`<div class="sec" style="padding-top:6px">구매 대기 ${waits.length}건</div>`+
+        waits.map(w=>{
+          const it=marketOf(w.mid);
+          return `<button class="mrow" ${it?`data-item="${it.id}"`:''}>
+            <div class="txt">${esc(it?it.name:'물품')}</div>
+            <div class="tm">${won(w.price)} · ${leftLabel(w.due)}</div></button>`;
+        }).join(''):''}
+    </div>
     <div class="card" style="margin-top:10px">
       <div class="sec">내가 쓴 댓글</div>
       ${mine.length?mine.slice(0,50).map(x=>`<button class="mrow" data-open="${x.p.id}">
@@ -2771,8 +2807,9 @@ document.addEventListener('click',e=>{
   }
   if(d.open){ S.post=+d.open; S.replyTo=null; return nav('detail'); }
   if(d.item){
-    const id=+d.item;
-    if(S.mitem!==id) S.mkPrice='';
+    const raw=d.item;
+    const id=(raw!=='' && +raw===+raw && String(+raw)===String(raw))?+raw:raw;
+    if(String(S.mitem)!==String(id)) S.mkPrice='';
     S.mitem=id; bump('look'); return nav('mitem');
   }
   if(d.choice){ const a=d.choice.split(':'); return chooseReply(+a[0],+a[1]); }
