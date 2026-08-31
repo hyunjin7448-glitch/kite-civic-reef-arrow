@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
@@ -184,6 +184,13 @@ function campustimeHtmlPlugin(): Plugin {
     },
     configurePreviewServer(server) {
       attach(server.middlewares, root);
+    },
+    closeBundle() {
+      const html = readFileSync(join(root, "public/campustime.html"));
+      const out = join(root, "dist/client");
+      mkdirSync(out, { recursive: true });
+      writeFileSync(join(out, "index.html"), html);
+      writeFileSync(join(out, "campustime.html"), html);
     },
   };
 }
