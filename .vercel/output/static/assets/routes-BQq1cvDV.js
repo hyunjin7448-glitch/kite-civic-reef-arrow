@@ -1,0 +1,1 @@
+import{t as e}from"./index-82jayT3S.js";var t=e();function n(){return(0,t.jsx)(`iframe`,{src:`/campustime.html`,title:`캠퍼스타임`,className:`fixed inset-0 z-0 h-dvh w-full border-0 bg-[#F2F3F5]`})}export{n as component};

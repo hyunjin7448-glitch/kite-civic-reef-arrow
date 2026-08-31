@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "캠퍼스타임",
+      "hasCanvas": false,
+      "bodyTextLen": 197,
+      "bodyTextHash": "cbe11952ebe9a38fb0d6016faf6a6f1a187652952af2378971a46304a6e8cae8",
+      "bodyTextPrefix": "캠퍼스타임 ••• 당겨서 새로고침 ? 익명 · 방금 도서관 자리 사건도서관 3층 노트북석 3시간째 비어있는 자리 주",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "캠퍼스타임",
+      "hasCanvas": false,
+      "bodyTextLen": 197,
+      "bodyTextHash": "cbe11952ebe9a38fb0d6016faf6a6f1a187652952af2378971a46304a6e8cae8",
+      "bodyTextPrefix": "캠퍼스타임 ••• 당겨서 새로고침 ? 익명 · 방금 도서관 자리 사건도서관 3층 노트북석 3시간째 비어있는 자리 주",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}
