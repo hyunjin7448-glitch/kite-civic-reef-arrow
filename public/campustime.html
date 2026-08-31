@@ -887,6 +887,7 @@ function exportAll(){
     people:DB.people, feed:DB.feed, sources:DB.sources, cfg:DB.cfg,
     tpl:DB.tpl, ptpl:DB.ptpl, qtpl:DB.qtpl, mtpl:DB.mtpl, polls:DB.polls, posts:DB.posts, revealed:DB.revealed,
     lastPostAt:DB.lastPostAt, clock:DB.clock, pending:DB.pending, nextId:DB.nextId,
+    prevealed:DB.prevealed, plastAt:DB.plastAt,
     market:DB.market, listed:DB.listed, owned:DB.owned, morders:DB.morders,
     credit:DB.credit, trades:DB.trades, bestRoi:DB.bestRoi, achs:DB.achs||[], marks:DB.marks||{}});
 }
@@ -911,6 +912,9 @@ function restoreBackup(text){
   DB=fresh();
   ['people','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','polls','posts','pending','market','listed','owned','morders','achs','marks'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
   ['revealed','lastPostAt','clock','nextId','prevealed','plastAt','credit','trades','bestRoi'].forEach(k=>{ if(typeof o[k]==='number') DB[k]=o[k]; });
+  if(typeof o.prevealed!=='number')
+    DB.prevealed=Math.min(DB.polls.length,(DB.posts||[]).filter(p=>p.pk==='poll').length);
+  if(typeof o.plastAt!=='number') DB.plastAt=DB.clock||0;
   DB.lastTick=Date.now();
   if(!Array.isArray(DB.feed)||!Array.isArray(DB.posts)){ DB=cur; return toast('백업 내용이 손상되었습니다'); }
   normalize(DB); refreshQuotes(); flush(); render();
@@ -927,7 +931,7 @@ function mergePeople(text){
   let n=0;
   arr.forEach(pr=>{
     if(!pr||!pr.name||DB.people.some(x=>x.name===pr.name)) return;
-    const o={id:Date.now()+Math.floor(Math.random()*10000),name:String(pr.name),role:String(pr.role||'기타')};
+    const o={id:uid(),name:String(pr.name),role:String(pr.role||'기타')};
     ['age','build','shape','desc','memo','photo'].forEach(k=>{ if(pr[k]) o[k]=String(pr[k]); });
     DB.people.push(o); n++;
   });
@@ -1207,8 +1211,42 @@ function skipNext(){
   if(!done) return toast('공개할 것이 더 없습니다');
   bump('skip'); tick(); toast('다음 항목을 공개했습니다'); render(); checkAchs();
 }
+function splitSrc(list, sample, posts, isPoll){
+  const titles=new Set(sample.map(x=>x.title));
+  const rest=(list||[]).filter(f=>!titles.has(f.title));
+  const published=[], waiting=[];
+  rest.forEach(f=>{
+    if(posts.some(p=>(p.pk==='poll')===isPoll && p.title===f.title)) published.push(f);
+    else waiting.push(f);
+  });
+  return {titles, published, waiting};
+}
+function resetSamplePosts(){
+  const feedPart=splitSrc(DB.feed, DEFAULT_FEED, DB.posts||[], false);
+  const pollPart=splitSrc(DB.polls, DEFAULT_POLLS, DB.posts||[], true);
+  DB.posts=(DB.posts||[]).filter(p=>p.pk==='poll'? !pollPart.titles.has(p.title): !feedPart.titles.has(p.title));
+  const live=new Set(DB.posts.map(p=>p.id));
+  DB.pending=(DB.pending||[]).filter(q=>live.has(q.pid));
+  DB.feed=feedPart.published.concat(DEFAULT_FEED.map(x=>x), feedPart.waiting);
+  DB.polls=pollPart.published.concat(DEFAULT_POLLS.map(x=>x), pollPart.waiting);
+  DB.revealed=feedPart.published.length;
+  DB.prevealed=pollPart.published.length;
+  DB.lastPostAt=DB.clock||0;
+  DB.plastAt=DB.clock||0;
+  DB.posts.forEach(p=>{
+    const list=p.pk==='poll'?DB.polls:DB.feed;
+    const i=list.findIndex(f=>f.title===p.title);
+    if(i>=0) p.fi=i;
+  });
+  if(S.post && !postOf(S.post)){ S.post=null; if(S.view==='detail'){ S.view=S.tab||'feed'; } }
+  DB.sources=DB.sources||[];
+  DB.sources.push({name:'기본 데이터', count:DEFAULT_FEED.length+DEFAULT_POLLS.length});
+  save(); tick(); render();
+  toast(`기본 글 ${DEFAULT_FEED.length}개 · 투표 ${DEFAULT_POLLS.length}개를 다시 넣었습니다`);
+}
 
 /* ===================== 데이터 불러오기 (누적) ===================== */
+
 function extract(text){
   let t=String(text).replace(/```[a-zA-Z]*/g,'').trim();
   if(t.indexOf('window.FEED')>=0){
@@ -1236,7 +1274,7 @@ function addFeed(text,name){
     data.people.forEach(pr=>{
       if(!pr||!pr.name) return;
       if(DB.people.some(x=>x.name===pr.name)) return;
-      const o={id:Date.now()+Math.floor(Math.random()*1000),name:String(pr.name),role:String(pr.role||'기타')};
+      const o={id:uid(),name:String(pr.name),role:String(pr.role||'기타')};
       ['age','build','shape','desc','memo','photo'].forEach(k=>{ if(pr[k]) o[k]=String(pr[k]); });
       DB.people.push(o);
       added++;
@@ -1292,7 +1330,10 @@ const KIND=['옷','교재','전자기기','생활','취향','문구','가구'];
 const VIBE=['천박함','허세','애잔함','진지함','귀여움','낡음','고급짐','민망함','과함','쓸쓸함'];
 function normTraits(a){
   if(!Array.isArray(a)) return [];
-  return a.map(x=>String(x).trim()).filter(Boolean).slice(0,3);
+  const t=a.map(x=>String(x).trim()).filter(Boolean);
+  const kind=t.find(x=>KIND.indexOf(x)>=0);
+  const vibe=t.find(x=>VIBE.indexOf(x)>=0);
+  return [kind,vibe].filter(Boolean);
 }
 function seedMarket(){
   return DEFAULT_MARKET.map((x,i)=>({
@@ -1420,7 +1461,7 @@ function startListing(it){
   const band=pickBand(it);
   it.band=band;
   const pool=((it.reactions||{})[band]||[]).map(String).filter(Boolean);
-  it.rx=shuffle(pool.slice());
+  it.rx=shuffle(pool.slice()).slice(0, Math.min(3, Math.max(2, pool.length)));
   it.rxn=0;
   it.rxAt=DB.clock||0;
 }
@@ -1435,6 +1476,7 @@ function cycleMarket(){
     if(!it){ ch=true; return; }
     if(blocked(id)){ ch=true; return; }
     if((it.backAt||0)>now){ ch=true; return; }
+    if((it.guardUntil||0)>now){ keep.push(id); return; }
     const q=typeof it.quote==='number'?it.quote:quoteOf(it);
     if(q<=floorOf(it)){
       it.backAt=now+cfgNum('mBack',1)*HOUR;
@@ -1455,9 +1497,14 @@ function cycleMarket(){
     if(have.has(it.id)||blocked(it.id)) return;
     if((it.backAt||0)>now) return;
     if(it.backAt){
+      if(quoteOf(it)<=floorOf(it)){
+        it.backAt=now+cfgNum('mBack',1)*HOUR;
+        return;
+      }
       it.quote=it.price;
       it.hist=[{at:DB.clock||0, p:it.price}];
       it.backAt=0;
+      it.guardUntil=now+cfgNum('mBack',1)*HOUR;
     }
     DB.listed.push(it.id);
     have.add(it.id);
@@ -1474,14 +1521,14 @@ function fillWait(side,price,quote){
   const q=Math.max(1,+quote||1), p=Math.max(1,+price||1);
   const fav=side==='buy'?p/q:q/p;
   const mul=Math.max(0.1, cfgNum('mFill',1));
-  if(fav>=1.05) return 0;
-  if(fav>1.001) return 10*MIN*mul;
-  if(fav>=0.999) return 30*MIN*mul;
-  if(fav>0.95) return 2*HOUR*mul;
-  return 8*HOUR*mul;
+  if(fav>=1.20) return 2*MIN*mul;
+  if(fav>=0.90) return 8*MIN*mul;
+  if(fav>=0.50) return 40*MIN*mul;
+  return 72*HOUR*mul;
 }
 function waitLabel(ms){
   if(ms<=0) return '즉시';
+  if(ms>=24*HOUR) return '사실상 안 잡힘';
   if(ms<HOUR) return '최대 '+Math.round(ms/MIN)+'분';
   return '최대 '+Math.round(ms/HOUR)+'시간';
 }
@@ -1491,6 +1538,11 @@ function isBroke(){
 }
 function creditGain(n){
   DB.credit=(DB.credit||0)+Math.round(n*cfgNum('mCred',1)*(isBroke()?4:1));
+}
+function payOnce(p,key,n){
+  if(!p||p[key]) return;
+  p[key]=1;
+  creditGain(n);
 }
 function parseMkPrice(q){
   const el=$('#mkPrice');
@@ -1548,8 +1600,8 @@ function placeOrder(side){
   }
   const wait=fillWait(side,price,q);
   if(wait<=0) bump('instant');
-  else if(wait>=8*HOUR) bump('hopeless');
-  else if(wait>=2*HOUR) bump('unfav');
+  else if(wait>=24*HOUR) bump('hopeless');
+  else if(wait>=30*MIN) bump('unfav');
   else bump('wait');
   const o={id:uid(), mid:it.id, side, price, cost:side==='sell'?(cost||0):price, due:Date.now()+wait, fromBroke:!!broke};
   if(wait<=0){ fillOrder(o); }
@@ -1587,6 +1639,13 @@ function vMarket(){
   if(mine.length){
     html+=`<div class="sec" style="background:var(--card)">내 물건 ${mine.length}개</div>`
       + mine.map(it=>mkRow(it,'보유')).join('');
+  }
+  const waits=(DB.morders||[]).map(o=>{
+    const it=marketOf(o.mid); if(!it) return '';
+    return mkRow(it, o.side==='buy'?'매수 대기':'매도 대기');
+  }).filter(Boolean);
+  if(waits.length){
+    html+=`<div class="sec" style="background:var(--card)">주문 대기 ${waits.length}건 · 취소 불가</div>`+waits.join('');
   }
   html+=`<div class="sec" style="background:var(--card)">지금 올라온 매물 ${list.length}개</div>`;
   if(!list.length) html+=`<div class="empty">${mine.length?'시장에 나온 매물이 없습니다.':'올라온 매물이 없습니다.'}</div>`;
@@ -2055,26 +2114,6 @@ function shrinkPhoto(file,cb){
   rd.onerror=()=>toast('파일을 읽지 못했습니다');
   rd.readAsDataURL(file);
 }
-function mentionCount(pr){
-  const name=String(pr.name||'').trim();
-  if(!name) return 0;
-  const count=key=>{
-    if(!key||key.length<2) return 0;
-    let n=0;
-    DB.posts.forEach(p=>{
-      const hay=p.title+'\n'+p.body+'\n'+p.comments.map(c=>c.text).join('\n');
-      let i=0;
-      while((i=hay.indexOf(key,i))>=0){ n++; i+=key.length; }
-    });
-    return n;
-  };
-  let n=count(name);
-  if(!n){                                  // 전체 이름이 안 나오면 가장 긴 토막으로 다시 센다
-    const tok=name.split(/[\s·,]+/).filter(x=>x.length>=2).sort((a,b)=>b.length-a.length)[0];
-    if(tok&&tok!==name) n=count(tok);
-  }
-  return n;
-}
 const STOP=['진짜','너무','그냥','우리','오늘','근데','어떻게','이거','저거','그거','하는','있는','없는',
   '합니다','했는데','인데','같은','같아요','에서','한테','에게','아니','다들','혹시','제발','때문','정도',
   '사람','생각','이번','저는','제가','내가','나는','지금','좀더','때문에','건가요','인가요','건데','뭔가',
@@ -2143,7 +2182,7 @@ function myWeight(p){
 }
 function buildMentions(){
   const key=DB.posts.length+':'+DB.posts.reduce((a,p)=>a+p.comments.length+myWeight(p),0)
-    +':'+DB.people.length;
+    +':'+(DB.people||[]).map(p=>p.id+'\t'+p.name).join('|');
   if(mcCache.key===key) return mcCache;
   const map={}, posts={}, interest={}, weighted={};
   DB.people.forEach(pr=>{
@@ -2411,6 +2450,9 @@ function vStock(){
 
     <div class="card">
       <div class="sec">초기화</div>
+      <div class="note">기본으로 들어 있는 글과 투표만 게시판에서 빼고 처음부터 다시 올라오게 합니다.
+        그 글에 단 댓글·공감도 함께 지워집니다. 붙여넣은 글, 인물, 시장, 업적은 그대로입니다.</div>
+      <div class="fld"><button class="btn sub" data-act="reset-sample">샘플 게시글 다시 넣기</button></div>
       <div class="note">쌓아둔 글, 공개된 게시글, 내가 단 댓글이 모두 지워지고 처음 상태로 돌아갑니다.</div>
       <div class="fld"><button class="btn danger" data-act="reset">데이터 초기화</button></div>
     </div>
@@ -2463,6 +2505,13 @@ function renderSheet(){
         되돌릴 수 없습니다.</div>
       <button class="btn danger" data-act="reset-yes">초기화</button>
       <button class="btn sub" data-act="close-sheet">취소</button>`;
+  }else if(S.sheet.type==='reset-sample'){
+    inner=`<h3>샘플 글을 다시 넣을까요?</h3>
+      <div style="font-size:13.5px;color:var(--sub);line-height:1.6;margin-bottom:14px">
+        기본 글 ${DEFAULT_FEED.length}개와 투표 ${DEFAULT_POLLS.length}개가 게시판에서 빠지고 처음부터 다시 올라옵니다.
+        그 글에 단 댓글·공감도 지워집니다. 붙여넣은 글, 인물, 시장, 업적은 그대로입니다.</div>
+      <button class="btn" data-act="reset-sample-yes">다시 넣기</button>
+      <button class="btn sub" data-act="close-sheet">취소</button>`;
   }else if(S.sheet.type==='ach'){
     const a=S.sheet.a||{};
     inner=`<div class="ach-pop">
@@ -2490,7 +2539,7 @@ function chooseReply(pid,idx){
   const myId=uid();
   p.comments.push({id:myId,by:'me',no:p.myNo,text:String(ch.text||''),at:DB.clock,
     likes:0,liked:false,parent});
-  creditGain(20); nightBump(); bump('pick');
+  payOnce(p,'paidCmt',20); nightBump(); bump('pick');
   const src=srcOf(p)||{};
   if((p.used||[]).length>=(src.choices||[]).length) bump('allpick');
   if(isPoll(p)) bump('pollcmt');
@@ -2511,7 +2560,7 @@ function sendComment(){
   const p=postOf(S.post); if(!p) return;
   if(!p.myNo) p.myNo=nextNo(p);
   p.comments.push({id:uid(),by:'me',no:p.myNo,text,at:DB.clock,likes:0,liked:false,parent:S.replyTo?topOf(p,S.replyTo):null});
-  creditGain(20); nightBump(); bump('typed');
+  payOnce(p,'paidCmt',20); nightBump(); bump('typed');
   if(isPoll(p)) bump('pollcmt');
   S.replyTo=null; save(); render();
   const m=$('#app'); if(m) m.scrollTop=m.scrollHeight;
@@ -2626,9 +2675,10 @@ document.addEventListener('click',e=>{
   if(d.ment){ S.ment=+d.ment; return nav('mentions'); }
   if(d.trend){ S.q=d.trend; bump('search'); nav('search'); checkAchs(); return; }
   if(d.like){
-    const p=postOf(+d.like); p.liked=!p.liked; p.likes+=p.liked?1:-1;
+    const p=postOf(+d.like); if(!p) return;
+    p.liked=!p.liked; p.likes+=p.liked?1:-1;
     if(p.liked){
-      creditGain(5); nightBump();
+      payOnce(p,'paidLike',5); nightBump();
       if(p.image) bump('imglike');
       if(isPoll(p)) bump('polllike');
       if(p.arc) bump('arclike');
@@ -2637,11 +2687,13 @@ document.addEventListener('click',e=>{
     save(); render(); checkAchs(); return;
   }
   if(d.scrap){
-    const p=postOf(+d.scrap); p.scrapped=!p.scrapped; p.scraps+=p.scrapped?1:-1;
+    const p=postOf(+d.scrap); if(!p) return;
+    p.scrapped=!p.scrapped; p.scraps+=p.scrapped?1:-1;
     if(p.scrapped && p.liked) bump('both');
     save(); render(); checkAchs(); return;
   }
-  if(d.clike){ const p=postOf(S.post); const c=p.comments.find(x=>x.id===+d.clike);
+  if(d.clike){ const p=postOf(S.post); if(!p) return;
+    const c=p.comments.find(x=>x.id===+d.clike);
     if(c){ c.liked=!c.liked; c.likes+=c.liked?1:-1; save(); } return render(); }
   if(d.reply){ S.replyTo=+d.reply; render(); const i=$('#cIn'); if(i) i.focus(); return; }
   if(d.cfg){ const a=d.cfg.split(':'); DB.cfg[a[0]]=parseFloat(a[1]); save(); tick(); return render(); }
@@ -2667,11 +2719,12 @@ document.addEventListener('click',e=>{
         shape:g('prShape'),memo:g('prMemo'),photo:photo};
       const cur=S.sheet.id?DB.people.find(x=>x.id===S.sheet.id):null;
       if(cur) Object.assign(cur,data);
-      else { DB.people.push(Object.assign({id:Date.now()},data)); bump('person'); }
-      S.sheet=null; S.pd=null; S.view='people'; S.tab='people'; save(); render();
+      else { DB.people.push(Object.assign({id:uid()},data)); bump('person'); }
+      S.sheet=null; S.pd=null; S.view='people'; S.tab='people';
+      mcCache.key=''; save(); render();
       toast(cur?'수정했습니다':'인물을 추가했습니다'); checkAchs(); break; }
     case 'del-person': DB.people=DB.people.filter(x=>x.id!==S.sheet.id);
-      S.sheet=null; S.pd=null; save(); render(); toast('삭제했습니다'); break;
+      S.sheet=null; S.pd=null; mcCache.key=''; save(); render(); toast('삭제했습니다'); break;
     case 'close-sheet': S.sheet=null; S.pd=null; showNextAch(); if(!S.sheet) render(); break;
     case 'tod': DB.cfg.tod=(DB.cfg.tod===false); save(); tick(); render();
       toast(DB.cfg.tod?'시간대에 따라 속도가 달라집니다':'시간대 반영을 껐습니다'); break;
@@ -2734,6 +2787,8 @@ document.addEventListener('click',e=>{
       break;
     case 'copy': copyPrompt(); break;
     case 'reset': S.sheet={type:'reset'}; render(); break;
+    case 'reset-sample': S.sheet={type:'reset-sample'}; render(); break;
+    case 'reset-sample-yes': S.sheet=null; resetSamplePosts(); break;
     case 'reset-yes': {
       try{ localStorage.removeItem(KEY); }catch(err){}
       if(idb) idbSet(KEY,null);
@@ -2784,7 +2839,12 @@ function keepInput(e){
 }
 document.addEventListener('input',keepInput);
 document.addEventListener('change',e=>{ if(onSlide(e,true)) return; keepInput(e); });
-document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id==='cIn') sendComment(); });
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||e.target.id!=='cIn') return;
+  if(e.isComposing||e.keyCode===229) return;
+  e.preventDefault();
+  sendComment();
+});
 document.addEventListener('focusout',()=>{ setTimeout(()=>{ if(S.dirty&&!busy()) redraw(); },120); });
 $('#file').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
