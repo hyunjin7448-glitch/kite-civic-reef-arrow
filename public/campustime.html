@@ -223,6 +223,29 @@
   .mk-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
   .mk-tag{font-size:11px;font-weight:700;color:var(--sub);background:var(--bg);
     border:1px solid var(--line);border-radius:6px;padding:3px 7px}
+  .mk-shop{padding:0 0 8px}
+  .mk-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 12px 12px}
+  .mk-card{display:flex;flex-direction:column;text-align:left;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;overflow:hidden;padding:0}
+  .mk-card:active{border-color:#ddd}
+  .mk-th{height:108px;display:grid;place-items:center;font-size:13px;font-weight:800;
+    letter-spacing:-.02em;color:#6B7280}
+  .mk-th.k0{background:#F6EBE4;color:#A05A3C}
+  .mk-th.k1{background:#E7EDF6;color:#3D5A80}
+  .mk-th.k2{background:#E4F0EA;color:#2F6B52}
+  .mk-th.k3{background:#F3F0E6;color:#7A6A3A}
+  .mk-th.k4{background:#F3E8F0;color:#8A4A72}
+  .mk-th.k5{background:#E8F2F4;color:#2F6A78}
+  .mk-th.k6{background:#EEEAE4;color:#6A5848}
+  .mk-th.k7{background:#EEF0F3;color:#5B6570}
+  .mk-card-b{padding:10px 11px 12px}
+  .mk-card .mk-name{font-size:13.5px;line-height:1.35;height:36px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .mk-card .mk-own{font-size:11px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mk-card .mk-price{font-size:15px;font-weight:800;color:var(--red);margin-top:8px}
+  .mk-card .mk-chg{font-size:11px;margin-top:2px}
+  .mk-card .mk-tags{margin-top:6px}
+  .mk-card .mk-tag{font-size:10px;padding:2px 6px}
   .rarity{display:inline-block;font-size:10px;font-weight:800;border-radius:5px;
     padding:2px 6px;margin-right:6px;vertical-align:2px}
   .r-rare{color:#8A4B00;background:#FFE7C2}
@@ -327,7 +350,7 @@
   .pull.load .ring{animation:spin .65s linear infinite;border-top-color:var(--red);
     border-color:var(--red-dim);opacity:1;transform:none}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .p-item.fresh,.mk-item.fresh{animation:pop .45s cubic-bezier(.2,.8,.3,1)}
+  .p-item.fresh,.mk-item.fresh,.mk-card.fresh{animation:pop .45s cubic-bezier(.2,.8,.3,1)}
   @keyframes pop{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
   .p-item.fresh .p-title::after{content:'NEW';font-size:9.5px;font-weight:800;color:var(--red);
     background:var(--red-dim);border-radius:4px;padding:2px 5px;margin-left:6px;vertical-align:2px;
@@ -777,7 +800,7 @@ function fresh(){
     feed:DEFAULT_FEED.map(x=>x), sources:[{name:'기본 데이터',count:DEFAULT_FEED.length}],
     posts:[], revealed:0, lastPostAt:0, clock:0, lastTick:Date.now(), pending:[], nextId:10,
     cfg:Object.assign({},CFG_DEF), tpl:null, ptpl:null, qtpl:null, mtpl:null,
-    market, listed:market.map(x=>x.id).slice(0,4), owned:[], morders:[], credit:10000, trades:0, bestRoi:0, achs:[], marks:{},
+    market, listed:market.map(x=>x.id), owned:[], morders:[], credit:10000, trades:0, bestRoi:0, achs:[], marks:{},
     polls:DEFAULT_POLLS.map(x=>x), prevealed:0, plastAt:0,
     people:[
       {id:1,name:'김대현 교수',role:'전공 교수',
@@ -1172,34 +1195,19 @@ function marketWait(){
   return (DB.market||[]).filter(it=>!ownedOf(it.id)&&!orderOf(it.id)&&!listed.has(it.id)).length;
 }
 function pullArmedText(){
-  if(isMarketTab()) return '놓으면 매물이 바뀝니다';
+  if(isMarketTab()) return '놓으면 시세를 새로고침합니다';
   return isPollTab()?'놓으면 새 투표가 올라옵니다':'놓으면 새 글이 올라옵니다';
 }
 function publishMarket(){
   if(!DB) return;
+  const before=(DB.listed||[]).slice();
   refreshQuotes();
-  const slots=Math.max(1, Math.round(cfgNum('mSlots',MKT_SLOTS)));
-  const listed=DB.listed||[];
-  const waiting=(DB.market||[]).filter(it=>!ownedOf(it.id)&&!orderOf(it.id)&&listed.indexOf(it.id)<0);
-  waiting.forEach(it=>{ it.backAt=0; });
-  const before=listed.slice();
-  if(waiting.length && listed.length>=slots){
-    const drop=listed[0];
-    DB.listed=listed.slice(1);
-    const nxt=waiting[0];
-    nxt.backAt=0;
-    DB.listed.push(nxt.id);
-    startListing(nxt);
-    const it=marketOf(drop);
-    if(it){ it.band=null; it.backAt=0; }
-  }
-  cycleMarket();
   const added=(DB.listed||[]).filter(id=>before.indexOf(id)<0);
   S.flash=added[0]||null;
   save(); render();
   const a=appEl(); if(a) a.scrollTop=0;
   if(added.length) toast('새 매물이 올라왔습니다');
-  else toast('매물을 새로고침했습니다');
+  else toast('시세를 새로고침했습니다');
   setTimeout(()=>{ S.flash=null; },2600);
 }
 document.addEventListener('touchstart',e=>{
@@ -1567,7 +1575,6 @@ function startListing(it){
 }
 function cycleMarket(){
   if(!DB||!DB.market) return false;
-  const now=Date.now();
   const blocked=id=>!!ownedOf(id)||!!orderOf(id);
   let ch=false;
   const keep=[];
@@ -1575,42 +1582,18 @@ function cycleMarket(){
     const it=marketOf(id);
     if(!it){ ch=true; return; }
     if(blocked(id)){ ch=true; return; }
-    if((it.backAt||0)>now){ ch=true; return; }
-    if((it.guardUntil||0)>now){ keep.push(id); return; }
-    const q=typeof it.quote==='number'?it.quote:quoteOf(it);
-    if(q<=floorOf(it)){
-      it.backAt=now+cfgNum('mBack',1)*HOUR;
-      it.quote=it.price;
-      it.hist=[{at:DB.clock||0, p:it.price}];
-      ch=true;
-      return;
-    }
     keep.push(id);
   });
-  if(keep.length!==(DB.listed||[]).length) ch=true;
-  const slots=Math.max(1, Math.round(cfgNum('mSlots',MKT_SLOTS)));
-  if(keep.length>slots){ keep.length=slots; ch=true; }
-  DB.listed=keep;
-  const have=new Set(DB.listed);
+  const have=new Set(keep.map(String));
   (DB.market||[]).forEach(it=>{
-    if(DB.listed.length>=slots) return;
-    if(have.has(it.id)||blocked(it.id)) return;
-    if((it.backAt||0)>now) return;
-    if(it.backAt){
-      if(quoteOf(it)<=floorOf(it)){
-        it.backAt=now+cfgNum('mBack',1)*HOUR;
-        return;
-      }
-      it.quote=it.price;
-      it.hist=[{at:DB.clock||0, p:it.price}];
-      it.backAt=0;
-      it.guardUntil=now+cfgNum('mBack',1)*HOUR;
-    }
-    DB.listed.push(it.id);
-    have.add(it.id);
+    if(have.has(String(it.id))||blocked(it.id)) return;
+    keep.push(it.id);
+    have.add(String(it.id));
     startListing(it);
     ch=true;
   });
+  if(keep.length!==(DB.listed||[]).length) ch=true;
+  DB.listed=keep;
   (DB.listed||[]).forEach(id=>{
     const it=marketOf(id);
     if(it && !it.band) startListing(it);
@@ -1738,53 +1721,62 @@ function traitHTML(it){
   if(!ts.length) return '';
   return `<div class="mk-tags">${ts.map(t=>`<span class="mk-tag">${esc(t)}</span>`).join('')}</div>`;
 }
+function kindMark(it){
+  const k=(it.traits||[])[0]||'';
+  const i=KIND.indexOf(k);
+  return {k:i<0?'k7':'k'+i, t:k||'물품'};
+}
 function mkRow(it,tag){
   const q=typeof it.quote==='number'?it.quote:quoteOf(it);
-  return `<button class="mk-item${it.id===S.flash?' fresh':''}" data-item="${it.id}">
-      <div class="mk-name"><span class="rarity ${rarityClass(it.rarity)}">${esc(it.rarity||'보통')}</span>${
-        tag?`<span class="rarity r2">${tag}</span>`:''}${esc(it.name)}</div>
-      <div class="mk-own">${esc(it.owner||'')}</div>
-      <div class="mk-price">${won(q)} 크레딧</div>
-      ${quoteChgHTML(it)}
-      ${traitHTML(it)}
-      ${it.desc?`<div class="mk-desc">${esc(it.desc)}</div>`:''}
+  const km=kindMark(it);
+  return `<button class="mk-card${it.id===S.flash?' fresh':''}" data-item="${it.id}">
+      <div class="mk-th ${km.k}">${esc(km.t)}</div>
+      <div class="mk-card-b">
+        <div class="mk-name"><span class="rarity ${rarityClass(it.rarity)}">${esc(it.rarity||'보통')}</span>${
+          tag?`<span class="rarity r2">${tag}</span>`:''}${esc(it.name)}</div>
+        <div class="mk-own">${esc(it.owner||'')}</div>
+        <div class="mk-price">${won(q)}</div>
+        ${quoteChgHTML(it)}
+      </div>
     </button>`;
+}
+function mkGrid(items,title){
+  if(!items.length) return '';
+  return `<div class="sec" style="background:transparent;padding:12px 14px 2px">${title}</div>
+    <div class="mk-grid">${items.join('')}</div>`;
 }
 function vMarket(){
   const list=(DB.listed||[]).map(marketOf).filter(Boolean);
   const mine=(DB.owned||[]).map(o=>marketOf(o.mid)).filter(Boolean);
-  const bar=`<div class="cr-bar"><span class="k">보유 크레딧</span><span class="v">${won(DB.credit)}</span></div>`;
-  let html=bar;
-  if(mine.length){
-    html+=`<div class="sec" style="background:var(--card)">내 물건 ${mine.length}개</div>`
-      + mine.map(it=>mkRow(it,'보유')).join('');
-  }
+  const bar=`<div class="cr-bar"><span class="k">중고장터 · 매물 ${list.length}</span><span class="v">${won(DB.credit)}</span></div>`;
   const waits=(DB.morders||[]).map(o=>{
     const it=marketOf(o.mid); if(!it) return '';
     return mkRow(it, o.side==='buy'?'매수 대기':'매도 대기');
   }).filter(Boolean);
-  if(waits.length){
-    html+=`<div class="sec" style="background:var(--card)">주문 대기 ${waits.length}건 · 취소 불가</div>`+waits.join('');
-  }
-  html+=`<div class="sec" style="background:var(--card)">지금 올라온 매물 ${list.length}개</div>`;
+  let html=bar;
+  html+=mkGrid(mine.map(it=>mkRow(it,'보유')), '내 물건 '+mine.length+'개');
+  html+=mkGrid(waits, '주문 대기 '+waits.length+'건 · 취소 불가');
+  html+=`<div class="sec" style="background:transparent;padding:12px 14px 2px">전체 매물 ${list.length}개</div>`;
   if(!list.length) html+=`<div class="empty">${mine.length?'시장에 나온 매물이 없습니다.':'올라온 매물이 없습니다.'}</div>`;
-  else html+=list.map(it=>mkRow(it)).join('');
+  else html+=`<div class="mk-grid">${list.map(it=>mkRow(it)).join('')}</div>`;
   return ptrHTML()+html+pullBtn();
 }
 function vMItem(){
   const it=marketOf(S.mitem);
   if(!it){ S.view='market'; S.tab='market'; return vMarket(); }
   const q=typeof it.quote==='number'?it.quote:quoteOf(it);
-  return `<div class="d-wrap">
+  const km=kindMark(it);
+  return `<div class="d-wrap" style="padding-top:0">
+    <div class="mk-th ${km.k}" style="height:132px;margin:0 -14px 16px">${esc(km.t)}</div>
     <div class="d-head">
       <span class="avatar">₩</span>
       <div><div class="d-who">${esc(it.owner||'')}</div>
-        <div class="d-sub"><span class="rarity ${rarityClass(it.rarity)}">${esc(it.rarity||'보통')}</span>시세</div></div>
+        <div class="d-sub"><span class="rarity ${rarityClass(it.rarity)}">${esc(it.rarity||'보통')}</span>판매자</div></div>
     </div>
     <h1 class="d-title">${esc(it.name)}</h1>
     ${it.desc?`<div class="d-body">${esc(it.desc)}</div>`:''}
     ${traitHTML(it)}
-    <div class="mk-price" style="margin-top:18px">${won(q)} 크레딧</div>
+    <div class="mk-price" style="margin-top:18px;color:var(--red);font-size:22px">${won(q)} 크레딧</div>
     ${quoteChgHTML(it)}
     <div class="mk-own" style="margin-top:10px">기준가 ${won(it.price)} 크레딧 · 보유 ${won(DB.credit)}</div>
     ${mkTradeHTML(it,q)}
@@ -2094,7 +2086,7 @@ function pullText(){
   if(!DB) return '';
   if(isMarketTab()){
     const n=marketWait();
-    if(n<=0) return '당겨서 매물 새로고침';
+    if(n<=0) return '당겨서 시세 새로고침';
     return `당기거나 눌러서 매물 불러오기 (대기 ${n}개)`;
   }
   const poll=isPollTab();
@@ -2560,9 +2552,7 @@ function vStock(){
       <div class="fld"><button class="btn sub" data-act="skip">다음 글 지금 공개</button></div>`;
   const market=`${slider('mK',c.mK,'시세 변동 계수','언급이 시세에 얼마나 크게 반영되는지')}
       ${slider('mHi',c.mHi,'상한 배수','시세가 기준가의 몇 배까지 오를 수 있는지')}
-      ${slider('mLo',c.mLo,'하한 배수','이 비율에 닿으면 매물이 내려간다')}
-      ${slider('mSlots',c.mSlots,'동시 노출 수','시장에 한꺼번에 올라오는 매물 수')}
-      ${slider('mBack',c.mBack,'재등장 시간','내려간 매물이 다시 올라오기까지')}
+      ${slider('mLo',c.mLo,'하한 배수','시세가 기준가의 이 비율 아래로 내려가지 않습니다')}
       ${slider('mFill',c.mFill,'체결 시간 배수','호가 유리·불리로 정해진 대기 시간에 곱한다')}
       ${slider('mCred',c.mCred,'크레딧 보상량','공감·댓글·투표로 받는 크레딧 배율')}
       ${slider('mBand',c.mBand,'감상평 구간 경계','등장 시세가 이 선을 넘으면 상승/하락 감상평')}
@@ -2966,7 +2956,7 @@ function onSlide(e,done){
     if(lb) lb.textContent=d.fmt(val);
     if(done){
       let ch=false;
-      if(key==='mSlots'||key==='mLo') ch=cycleMarket();
+      if(key==='mLo') ch=cycleMarket();
       save(); tick();
       if(ch) redraw();
     }
