@@ -1247,22 +1247,72 @@ function resetSamplePosts(){
 
 /* ===================== 데이터 불러오기 (누적) ===================== */
 
+function matchJson(t,start){
+  let depth=0, inStr=false, esc=false;
+  for(let i=start;i<t.length;i++){
+    const c=t[i];
+    if(inStr){
+      if(esc){ esc=false; continue; }
+      if(c==='\\'){ esc=true; continue; }
+      if(c==='"') inStr=false;
+      continue;
+    }
+    if(c==='"'){ inStr=true; continue; }
+    if(c==='{'||c==='[') depth++;
+    else if(c==='}'||c===']'){
+      depth--;
+      if(depth===0) return i;
+    }
+  }
+  return -1;
+}
+function takeBlock(slice){
+  try{ return JSON.parse(slice); }catch(e){}
+  try{ const r=new Function('return '+slice)(); if(r!=null) return r; }catch(e2){}
+  return null;
+}
+function jsonBlocks(text){
+  const t=String(text);
+  const out=[];
+  for(let i=0;i<t.length;i++){
+    if(t[i]!=='{'&&t[i]!=='[') continue;
+    const end=matchJson(t,i);
+    if(end<0) continue;
+    const v=takeBlock(t.slice(i,end+1));
+    if(v!=null && (Array.isArray(v)||typeof v==='object')){ out.push(v); i=end; }
+  }
+  return out;
+}
+function mergeBlocks(blocks){
+  const posts=[], polls=[], people=[], market=[];
+  const pushItem=x=>{
+    if(!x||typeof x!=='object') return;
+    if(isMarketRow(x)) market.push(x);
+    else if(Array.isArray(x.options)&&x.options.length>=2) polls.push(x);
+    else if(x.title) posts.push(x);
+    else if(x.name&&(x.role||x.memo)) people.push(x);
+  };
+  blocks.forEach(b=>{
+    if(Array.isArray(b)) b.forEach(pushItem);
+    else if(b&&typeof b==='object'){
+      if(Array.isArray(b.people)) people.push.apply(people, b.people);
+      if(Array.isArray(b.market)) market.push.apply(market, b.market);
+      ;[].concat(b.posts||[], b.feed||[], b.polls||[]).forEach(pushItem);
+    }
+  });
+  if(people.length||market.length||polls.length)
+    return {people, market, posts:posts.concat(polls)};
+  return posts;
+}
 function extract(text){
   let t=String(text).replace(/```[a-zA-Z]*/g,'').trim();
   if(t.indexOf('window.FEED')>=0){
     try{ const w={}; const r=new Function('window', t+'\nreturn window.FEED;')(w); if(Array.isArray(r)) return r; }catch(e){}
   }
-  const oa=t.indexOf('{'), ob=t.lastIndexOf('}');
-  const a=t.indexOf('['), b=t.lastIndexOf(']');
-  if(oa>=0&&(a<0||oa<a)){
-    try{ const o=JSON.parse(t.slice(oa,ob+1)); if(o&&(o.people||o.posts||o.feed||o.market||o.polls)) return o; }catch(e){}
-  }
-  if(a<0||b<0) throw new Error('JSON 배열을 찾지 못했습니다');
-  try{ return JSON.parse(t.slice(a,b+1)); }
-  catch(e){
-    try{ const r=new Function('return '+t.slice(a,b+1))(); if(Array.isArray(r)) return r; }catch(e2){}
-    throw new Error('JSON 형식이 올바르지 않습니다');
-  }
+  const blocks=jsonBlocks(t);
+  if(!blocks.length) throw new Error('JSON 배열을 찾지 못했습니다');
+  if(blocks.length===1) return blocks[0];
+  return mergeBlocks(blocks);
 }
 function addFeed(text,name){
   let data;
@@ -1281,7 +1331,7 @@ function addFeed(text,name){
     });
     }
     if(Array.isArray(data.market)) madded+=mergeMarket(data.market);
-    data=data.posts||data.feed||[];
+    data=[].concat(data.posts||[], data.feed||[], data.polls||[]);
   }
   if(!Array.isArray(data)) data=[];
   const fromArr=data.filter(isMarketRow);
@@ -2373,7 +2423,7 @@ function vStock(){
     <div class="card">
       <div class="sec">글 불러오기</div>
       <div class="note">AI가 출력한 내용을 그대로 붙여넣으세요. 코드펜스나 앞뒤 설명이 섞여 있어도 배열만 뽑아냅니다.
-        기존 글은 지워지지 않고 <b>뒤에 이어 쌓입니다.</b></div>
+        JSON이 <b>여러 세트</b>여도 한 번에 붙여넣으면 전부 뒤에 이어 쌓입니다.</div>
       <div class="fld">
         <textarea class="ta" id="paste" placeholder='[ { "title": "...", "body": "..." } ]'>${esc(S.pasted)}</textarea>
         <button class="btn" data-act="add-paste">붙여넣은 내용 추가</button>
