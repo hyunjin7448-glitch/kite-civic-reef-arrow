@@ -787,6 +787,7 @@ function fresh(){
     cfg:Object.assign({},CFG_DEF), tpl:null, ptpl:null, qtpl:null, mtpl:null,
     market, listed:market.map(x=>x.id), owned:[], morders:[], credit:10000, trades:0, bestRoi:0, achs:[], marks:{},
     polls:DEFAULT_POLLS.map(x=>x), prevealed:0, plastAt:0,
+    vault:[], vrev:0, pvault:[], pvrev:0,
     people:[
       {id:1,name:'김대현 교수',role:'전공 교수',
        age:'40대 후반',build:'180cm / 68kg',shape:'마르고 어깨가 좁다',
@@ -852,6 +853,10 @@ function normalize(d){
   d.cfg=Object.assign({},CFG_DEF,d.cfg||{});
   ['dm','convos','aff','dmq','dmNextAt','dtpl'].forEach(k=>{ delete d[k]; });
   d.polls=d.polls||[]; d.prevealed=d.prevealed||0; d.plastAt=d.plastAt||0;
+  d.vault=Array.isArray(d.vault)?d.vault:[];
+  d.pvault=Array.isArray(d.pvault)?d.pvault:[];
+  d.vrev=typeof d.vrev==='number'?d.vrev:0;
+  d.pvrev=typeof d.pvrev==='number'?d.pvrev:0;
   if(!Array.isArray(d.market)){
     d.market=seedMarket();
     d.listed=d.market.map(x=>x.id).slice(0,4);
@@ -872,6 +877,7 @@ function normalize(d){
     if(!Array.isArray(it.hist)) it.hist=[];
     if(typeof it.quote!=='number') it.quote=it.price;
     if(typeof it.backAt!=='number') it.backAt=0;
+    it.down=!!it.down;
     it.traits=normTraits(it.traits);
   });
   const maxM=(d.market||[]).reduce((a,x)=>Math.max(a,+x.id||0),0);
@@ -904,6 +910,7 @@ function exportAll(){
     tpl:DB.tpl, ptpl:DB.ptpl, qtpl:DB.qtpl, mtpl:DB.mtpl, polls:DB.polls, posts:DB.posts, revealed:DB.revealed,
     lastPostAt:DB.lastPostAt, clock:DB.clock, pending:DB.pending, nextId:DB.nextId,
     prevealed:DB.prevealed, plastAt:DB.plastAt,
+    vault:DB.vault||[], vrev:DB.vrev||0, pvault:DB.pvault||[], pvrev:DB.pvrev||0,
     market:DB.market, listed:DB.listed, owned:DB.owned, morders:DB.morders,
     credit:DB.credit, trades:DB.trades, bestRoi:DB.bestRoi, achs:DB.achs||[], marks:DB.marks||{}});
 }
@@ -926,8 +933,8 @@ function restoreBackup(text){
   if(!o||!o.__campustime) return toast('캠퍼스타임 백업 파일이 아닙니다');
   const cur=DB;
   DB=fresh();
-  ['people','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','polls','posts','pending','market','listed','owned','morders','achs','marks'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
-  ['revealed','lastPostAt','clock','nextId','prevealed','plastAt','credit','trades','bestRoi'].forEach(k=>{ if(typeof o[k]==='number') DB[k]=o[k]; });
+  ['people','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
+  ['revealed','lastPostAt','clock','nextId','prevealed','plastAt','credit','trades','bestRoi','vrev','pvrev'].forEach(k=>{ if(typeof o[k]==='number') DB[k]=o[k]; });
   if(typeof o.prevealed!=='number')
     DB.prevealed=Math.min(DB.polls.length,(DB.posts||[]).filter(p=>p.pk==='poll').length);
   if(typeof o.plastAt!=='number') DB.plastAt=DB.clock||0;
@@ -988,16 +995,17 @@ function imgOf(f){
   return String(typeof t==='object'?(t.alt||t.src||''):t).trim().slice(0,60);
 }
 function srcOf(p){
-  if(p.fi<0) return null;
+  if(p&&p.src) return p.src;
+  if(!p||p.fi<0) return null;
   return (p.pk==='poll'?DB.polls:DB.feed)[p.fi]||null;
 }
-function publishPost(i,due,poll){
-  const f=(poll?DB.polls:DB.feed)[i];
+function spawnPost(f,due,poll,fi){
   const o={id:uid(), title:String(f.title||'(제목 없음)'), body:String(f.body||''),
     at:due, likes:+f.likes||0, liked:false, scraps:+f.scraps||0, scrapped:false,
     anon:f.anon!==false, author:null, image:imgOf(f), comments:[],
-    fi:i, pk:poll?'poll':'feed', cn:0, cAt:due, cmap:[], used:[], myNo:0};
+    fi:fi==null?-1:fi, pk:poll?'poll':'feed', cn:0, cAt:due, cmap:[], used:[], myNo:0};
   if(f.arc) o.arc=String(f.arc).slice(0,40);
+  if(fi==null||fi<0) o.src=f;
   if(poll){
     const opts=(f.options||[]).map(x=>String(x)).slice(0,4);
     o.options=opts.length>=2?opts:['A','B'];
@@ -1008,6 +1016,60 @@ function publishPost(i,due,poll){
     o.myVote=null;
   }
   DB.posts.unshift(o);
+  return o;
+}
+function publishPost(i,due,poll){
+  const f=(poll?DB.polls:DB.feed)[i];
+  if(!f) return;
+  spawnPost(f,due,poll,i);
+}
+function srcClone(p){
+  const f=srcOf(p);
+  let o;
+  try{ o=f?JSON.parse(JSON.stringify(f)):null; }catch(e){ o=null; }
+  if(!o) o={title:p.title, body:p.body, comments:[], choices:[]};
+  o.pk=p.pk==='poll'?'poll':'feed';
+  if(p.pk==='poll'){
+    if(!Array.isArray(o.options)) o.options=(p.options||[]).slice();
+    if(!Array.isArray(o.votes)) o.votes=(p.votes||[]).slice();
+  }
+  return o;
+}
+function vaultWait(poll){
+  if(poll) return Math.max(0,(DB.pvault||[]).length-(DB.pvrev||0));
+  return Math.max(0,(DB.vault||[]).length-(DB.vrev||0));
+}
+function archiveBoard(){
+  if(!DB||!(DB.posts||[]).length) return toast('옮길 글이 없습니다');
+  DB.vault=DB.vault||[]; DB.pvault=DB.pvault||[];
+  let f=0, q=0;
+  DB.posts.forEach(p=>{
+    const o=srcClone(p);
+    if(p.pk==='poll'){ DB.pvault.push(o); q++; }
+    else { DB.vault.push(o); f++; }
+  });
+  DB.posts=[];
+  DB.pending=[];
+  S.post=null; S.replyTo=null;
+  if(S.view==='detail'||S.view==='hot'||S.view==='search'){ S.view='feed'; S.tab='feed'; }
+  save(); render();
+  toast('보관함으로 옮겼습니다 · 글 '+f+' · 투표 '+q);
+}
+function publishVault(poll){
+  if(poll){
+    const i=DB.pvrev||0;
+    const f=(DB.pvault||[])[i];
+    if(!f) return false;
+    spawnPost(f, DB.clock, true, -1);
+    DB.pvrev=i+1;
+    return true;
+  }
+  const i=DB.vrev||0;
+  const f=(DB.vault||[])[i];
+  if(!f) return false;
+  spawnPost(f, DB.clock, false, -1);
+  DB.vrev=i+1;
+  return true;
 }
 /* cmap: 원본 댓글 index → 실제 댓글 id.
    내 댓글이 중간에 끼어도 reply/to 대상이 어긋나지 않는다. */
@@ -1168,8 +1230,9 @@ function publishOne(){
   if(!DB) return;
   const poll=isPollTab();
   if(waitCount(poll)<=0){ setPull(pullText(),false); return toast('더 불러올 것이 없습니다'); }
-  if(poll){ publishPost(DB.prevealed, DB.clock, true); DB.plastAt=DB.clock; DB.prevealed++; }
-  else    { publishPost(DB.revealed, DB.clock, false); DB.lastPostAt=DB.clock; DB.revealed++; }
+  if(vaultWait(poll)>0) publishVault(poll);
+  else if(poll){ publishPost(DB.prevealed, DB.clock, true); DB.plastAt=DB.clock; DB.prevealed++; }
+  else { publishPost(DB.revealed, DB.clock, false); DB.lastPostAt=DB.clock; DB.revealed++; }
   S.flash=DB.posts[0].id;
   save(); render();
   const a=appEl(); if(a) a.scrollTop=0;
@@ -1177,7 +1240,7 @@ function publishOne(){
 }
 function marketWait(){
   const listed=new Set(DB.listed||[]);
-  return (DB.market||[]).filter(it=>!ownedOf(it.id)&&!orderOf(it.id)&&!listed.has(it.id)).length;
+  return (DB.market||[]).filter(it=>!it.down&&!ownedOf(it.id)&&!orderOf(it.id)&&!listed.has(it.id)).length;
 }
 function pullArmedText(){
   if(isMarketTab()) return '놓으면 시세를 새로고침합니다';
@@ -1248,6 +1311,9 @@ document.addEventListener('wheel',e=>{
 
 function skipNext(){
   const g=Math.max(0.05,DB.cfg.postGap)*MIN;
+  if(vaultWait(isPollTab())>0){
+    bump('skip'); publishOne(); toast('보관함에서 다음 글을 올렸습니다'); return;
+  }
   let done=false;
   if(DB.revealed<DB.feed.length){ DB.lastPostAt=DB.clock-g; done=true; }
   if(DB.prevealed<DB.polls.length){ DB.plastAt=DB.clock-g; done=true; }
@@ -1560,12 +1626,12 @@ function cycleMarket(){
   (DB.listed||[]).forEach(id=>{
     const it=marketOf(id);
     if(!it){ ch=true; return; }
-    if(blocked(id)){ ch=true; return; }
+    if(it.down||blocked(id)){ ch=true; return; }
     keep.push(id);
   });
   const have=new Set(keep.map(String));
   (DB.market||[]).forEach(it=>{
-    if(have.has(String(it.id))||blocked(it.id)) return;
+    if(it.down||have.has(String(it.id))||blocked(it.id)) return;
     keep.push(it.id);
     have.add(String(it.id));
     startListing(it);
@@ -1804,6 +1870,12 @@ function mkTradeHTML(it,q){
   const mine=!!ownedOf(it.id);
   const shelf=onShelf(it.id);
   if(!mine && !shelf){
+    if(it.down){
+      return `<div class="mk-trade">
+        <div class="mk-wait">내린 매물입니다. 시장 목록에 보이지 않습니다.</div>
+        <button class="btn sub" data-act="mk-up">다시 올리기</button>
+      </div>`;
+    }
     const wait=(it.backAt||0)>Date.now();
     return `<div class="mk-trade"><div class="mk-wait">${
       wait?'잠시 내려간 매물입니다. 곧 같은 기준가로 다시 나옵니다.':'지금 시장에 나와 있지 않습니다.'
@@ -1815,7 +1887,8 @@ function mkTradeHTML(it,q){
       <input id="mkPrice" inputmode="numeric" value="${esc(val)}" placeholder="${won(q)}"></div>
     ${mine
       ? `<button class="btn" data-act="mk-sell">팔기</button>`
-      : `<button class="btn" data-act="mk-buy">사기</button>`}
+      : `<button class="btn" data-act="mk-buy">사기</button>
+         <button class="btn sub" data-act="mk-down" style="margin-top:8px">매물 내리기</button>`}
     <div class="mk-hint">시세보다 ${mine?'싸게 팔면':'비싸게 사면'} 빨리 체결됩니다. 취소는 안 됩니다.</div>
   </div>`;
 }
@@ -2077,7 +2150,10 @@ function listOf(list,emptyMsg){
     + pullBtn();
 }
 function isPollTab(){ return S.view==='poll'||S.tab==='poll'; }
-function waitCount(poll){ return poll?(DB.polls.length-DB.prevealed):(DB.feed.length-DB.revealed); }
+function waitCount(poll){
+  if(poll) return (DB.polls.length-DB.prevealed)+vaultWait(true);
+  return (DB.feed.length-DB.revealed)+vaultWait(false);
+}
 function pullText(){
   if(!DB) return '';
   if(isMarketTab()){
@@ -2088,6 +2164,8 @@ function pullText(){
   const poll=isPollTab();
   const n=waitCount(poll);
   if(n<=0) return poll?'쌓아둔 투표를 모두 봤습니다':'쌓아둔 글을 모두 봤습니다';
+  const v=vaultWait(poll);
+  if(v>0) return `당기거나 눌러서 보관함에서 불러오기 (대기 ${v}개)`;
   return `당기거나 눌러서 ${poll?'새 투표':'새 글'} 불러오기 (대기 ${n}개)`;
 }
 
@@ -2546,6 +2624,9 @@ function vStock(){
         <button class="pill ${DB.cfg.tod!==false?'on':''}" data-act="tod">
           ${DB.cfg.tod!==false?'켜짐':'꺼짐'}</button></div>
       <div class="fld"><button class="btn sub" data-act="skip">다음 글 지금 공개</button></div>`;
+  const replay=`<div class="note">지금 게시판에 떠 있는 글을 보관함으로 옮깁니다. 보드가 비고, 당겨서 새로고침하면 보관함에서 다시 올라옵니다. 시간 따라 올라오는 새 글은 그대로입니다.</div>
+      <div class="sec">게시판 ${DB.posts.length}개 · 보관함 글 ${vaultWait(false)}개 · 투표 ${vaultWait(true)}개</div>
+      <div class="fld"><button class="btn sub" data-act="archive">지금 글을 보관함으로</button></div>`;
   const market=`${slider('mK',c.mK,'시세 변동 계수','언급이 시세에 얼마나 크게 반영되는지')}
       ${slider('mHi',c.mHi,'상한 배수','시세가 기준가의 몇 배까지 오를 수 있는지')}
       ${slider('mLo',c.mLo,'하한 배수','시세가 기준가의 이 비율 아래로 내려가지 않습니다')}
@@ -2585,6 +2666,7 @@ function vStock(){
   return `<div class="pad">
     ${foldCard('import','글 불러오기',`대기 글 ${waiting} · 투표 ${pwait}`,load,true)}
     ${foldCard('speed','공개 속도','간격 · 시간대 · 지금 공개',speed,false)}
+    ${foldCard('replay','다시보기',`보관함 글 ${vaultWait(false)+vaultWait(true)}개`,replay,true)}
     ${foldCard('mkset','시장 운영','시세 · 매물 수 · 체결',market,false)}
     ${foldCard('backup','백업','파일 저장 · 복원 · 인물 옮기기',backup,false)}
     ${foldCard('quota','저장 공간',S.quota?fmtMB(S.quota.use)+' 사용 중':'확인 중',quota,false)}
@@ -2851,6 +2933,16 @@ document.addEventListener('click',e=>{
     case 'go-stock': nav('stock'); break;
     case 'mk-buy': placeOrder('buy'); break;
     case 'mk-sell': placeOrder('sell'); break;
+    case 'mk-down': {
+      const it=marketOf(S.mitem); if(!it) break;
+      if(ownedOf(it.id)||orderOf(it.id)){ toast('거래 중인 물건은 내릴 수 없습니다'); break; }
+      it.down=1;
+      DB.listed=(DB.listed||[]).filter(id=>String(id)!==String(it.id));
+      save(); render(); toast('매물을 내렸습니다'); break; }
+    case 'mk-up': {
+      const it=marketOf(S.mitem); if(!it) break;
+      it.down=0; cycleMarket(); save(); render(); toast('매물을 다시 올렸습니다'); break; }
+    case 'archive': archiveBoard(); break;
     case 'send': sendComment(); break;
     case 'add-person': S.sheet={type:'person',id:0}; S.pd=null; render(); break;
     case 'photo-pick': grabPerson(); $('#pfile').click(); break;
