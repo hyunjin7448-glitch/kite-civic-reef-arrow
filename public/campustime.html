@@ -44,6 +44,13 @@
   .card{background:var(--card);border-radius:var(--r);overflow:hidden}
   .card + .card{margin-top:10px}
   .sec{padding:14px 14px 6px;font-size:12.5px;font-weight:800;color:var(--sub);letter-spacing:-.01em}
+  .fold-h{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;
+    padding:14px;text-align:left;background:var(--card)}
+  .fold-h.on{border-bottom:1px solid var(--line)}
+  .fold-t{font-size:13.5px;font-weight:800;letter-spacing:-.02em;color:var(--ink);min-width:0}
+  .fold-t small{display:block;font-size:11.5px;font-weight:600;color:var(--faint);margin-top:3px;
+    letter-spacing:0;line-height:1.4}
+  .fold-c{flex:0 0 auto;color:var(--faint);font-size:15px;line-height:1;width:18px;text-align:center}
   .note{padding:0 14px 14px;font-size:12px;color:var(--faint);line-height:1.6}
 
   /* 목록 */
@@ -759,6 +766,7 @@ let DB=null;
 const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen:'',pasted:'',genMode:'post',tplEdit:false,tplDraft:null,ptplEdit:false,ptplDraft:null,
   qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,quota:null,dirty:false,mkPrice:'',
   backupText:'',ppaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
+  fold:{import:1,make:1},
   g:{n:'12',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
      peoplePct:'30',arc:'1',qn:'8',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'8'},
   pd:null};
@@ -1762,6 +1770,12 @@ function mkTradeHTML(it,q){
     <div class="mk-hint">시세보다 ${mine?'싸게 팔면':'비싸게 사면'} 빨리 체결됩니다. 취소는 안 됩니다.</div>
   </div>`;
 }
+function buildByMode(){
+  const m=S.genMode||'post';
+  if(m==='poll') return buildPoll();
+  if(m==='market') return buildMarket();
+  return buildPrompt();
+}
 function mtpl(){ return (DB.mtpl&&DB.mtpl.trim())?DB.mtpl:DEFAULT_MTPL; }
 function personBlock(){
   if(!DB.people.length) return '(인물이 없습니다)';
@@ -1781,6 +1795,7 @@ function buildMarket(){
   S.gen=mtpl()
     .split('{인물}').join(personBlock())
     .split('{개수}').join(S.g.mn);
+  S.fold=S.fold||{}; S.fold.out=1;
   render();
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
 }
@@ -2329,6 +2344,21 @@ function vPeople(){
 }
 
 /* ---- 설정 (데이터 · 속도 · 프롬프트 생성기 · 초기화) ---- */
+function foldOn(k, def){
+  S.fold=S.fold||{};
+  if(S.fold[k]==null) S.fold[k]=def?1:0;
+  return !!S.fold[k];
+}
+function foldCard(k, title, sub, inner, def){
+  const on=foldOn(k, !!def);
+  return `<div class="card">
+    <button class="fold-h ${on?'on':''}" data-fold="${k}">
+      <span class="fold-t">${title}${sub?`<small>${sub}</small>`:''}</span>
+      <span class="fold-c">${on?'▾':'▸'}</span>
+    </button>
+    ${on?inner:''}
+  </div>`;
+}
 function vMore(){
   return `<div class="pad gate">
     <button class="gate-btn" data-act="go-lab">
@@ -2344,40 +2374,37 @@ function vMore(){
 function vLab(){
   const peopleN=DB.people.length;
   const mode=S.genMode||'post';
-  const seg=`<div class="seg" style="padding:0 14px 12px">
+  const modeName=mode==='poll'?'투표':mode==='market'?'물품':'게시글';
+  const seg=`<div class="seg" style="padding:4px 0 12px">
         <button class="${mode==='post'?'on':''}" data-gmode="post">게시글</button>
         <button class="${mode==='poll'?'on':''}" data-gmode="poll">투표</button>
         <button class="${mode==='market'?'on':''}" data-gmode="market">물품</button>
       </div>`;
-  let body='';
+  let make='', edit='';
   if(mode==='poll'){
-    body=`${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수')}
+    make=`${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수')}
       <div class="fld"><label>소재 힌트</label>
         <input id="qT" value="${esc(S.g.qtopic)}"></div>
-      <div class="fld"><button class="btn sub" data-act="gen-poll">투표 프롬프트 만들기</button>
-        <button class="btn sub" data-act="qtpl-toggle" style="margin-top:8px">
+      <div class="fld"><button class="btn" data-act="gen-poll">투표 프롬프트 만들기</button></div>`;
+    edit=`<div class="fld"><button class="btn sub" data-act="qtpl-toggle">
           ${S.qtplEdit?'투표 프롬프트 닫기':'기본 투표 프롬프트 수정'}${DB.qtpl?' (수정됨)':''}</button>
         ${S.qtplEdit?`
         <div class="note" style="padding:10px 0 6px"><b>{개수}</b> <b>{주제}</b> <b>{누적}</b> 이 자동으로 채워집니다.</div>
         <textarea class="ta" id="qtplBox" style="min-height:240px">${esc(S.qtplDraft!=null?S.qtplDraft:qtpl())}</textarea>
         <button class="btn" data-act="qtpl-save">이 내용으로 저장</button>
-        <button class="btn sub" data-act="qtpl-reset">기본값으로 되돌리기</button>`:''}
-        ${S.gen?`<textarea class="ta" id="genOut" style="min-height:200px;margin-top:10px" readonly>${esc(S.gen)}</textarea>
-        <button class="btn" data-act="copy">프롬프트 복사</button>`:''}</div>`;
+        <button class="btn sub" data-act="qtpl-reset">기본값으로 되돌리기</button>`:''}</div>`;
   }else if(mode==='market'){
-    body=`${slider('mn',S.g.mn,'물품 개수','한 번에 만들 매물 수')}
-      <div class="fld"><button class="btn sub" data-act="gen-market">물품 프롬프트 만들기</button>
-        <button class="btn sub" data-act="mtpl-toggle" style="margin-top:8px">
+    make=`${slider('mn',S.g.mn,'물품 개수','한 번에 만들 매물 수')}
+      <div class="fld"><button class="btn" data-act="gen-market">물품 프롬프트 만들기</button></div>`;
+    edit=`<div class="fld"><button class="btn sub" data-act="mtpl-toggle">
           ${S.mtplEdit?'물품 프롬프트 닫기':'기본 물품 프롬프트 수정'}${DB.mtpl?' (수정됨)':''}</button>
         ${S.mtplEdit?`
         <div class="note" style="padding:10px 0 6px"><b>{인물}</b> <b>{개수}</b> 이 자동으로 채워집니다.</div>
         <textarea class="ta" id="mtplBox" style="min-height:240px">${esc(S.mtplDraft!=null?S.mtplDraft:mtpl())}</textarea>
         <button class="btn" data-act="mtpl-save">이 내용으로 저장</button>
-        <button class="btn sub" data-act="mtpl-reset">기본값으로 되돌리기</button>`:''}
-        ${S.gen?`<textarea class="ta" id="genOut" style="min-height:200px;margin-top:10px" readonly>${esc(S.gen)}</textarea>
-        <button class="btn" data-act="copy">프롬프트 복사</button>`:''}</div>`;
+        <button class="btn sub" data-act="mtpl-reset">기본값으로 되돌리기</button>`:''}</div>`;
   }else{
-    body=`${slider('n',S.g.n,'글 개수','한 번에 만들 게시글 수')}
+    make=`${slider('n',S.g.n,'글 개수','한 번에 만들 게시글 수')}
       ${slider('imgPct',S.g.imgPct,'사진 넣는 비율','사진 설명이 붙는 글의 비율')}
       <div class="fld"><label>주제 힌트</label>
         <input id="gT" value="${esc(S.g.topic)}"></div>
@@ -2387,8 +2414,8 @@ function vLab(){
       ${peopleN
         ?slider('peoplePct',S.g.peoplePct,`인물 언급 비율 (등록 ${peopleN}명)`,'인물이 언급되는 글의 비율')
         :`<div class="note">인물 탭에 사람을 등록하면 인물 언급 옵션이 생깁니다.</div>`}
-      <div class="fld"><button class="btn sub" data-act="gen">프롬프트 만들기</button>
-        <button class="btn sub" data-act="tpl-toggle" style="margin-top:8px">
+      <div class="fld"><button class="btn" data-act="gen">게시글 프롬프트 만들기</button></div>`;
+    edit=`<div class="fld"><button class="btn sub" data-act="tpl-toggle">
           ${S.tplEdit?'기본 프롬프트 닫기':'기본 프롬프트 수정'}${DB.tpl?' (수정됨)':''}</button>
         ${S.tplEdit?`
         <div class="note" style="padding:10px 0 6px">중괄호 자리표시자는 만들 때 자동으로 채워집니다.
@@ -2403,26 +2430,24 @@ function vLab(){
           <b>{명단}</b>은 인물 탭 내용으로, <b>{빈도}</b>는 위에서 고른 등장 빈도로 채워집니다.</div>
         <textarea class="ta" id="ptplBox" style="min-height:200px">${esc(S.ptplDraft!=null?S.ptplDraft:ptpl())}</textarea>
         <button class="btn" data-act="ptpl-save">이 내용으로 저장</button>
-        <button class="btn sub" data-act="ptpl-reset">기본값으로 되돌리기</button>`:''}
-        ${S.gen?`<textarea class="ta" id="genOut" style="min-height:200px;margin-top:10px" readonly>${esc(S.gen)}</textarea>
-        <button class="btn" data-act="copy">프롬프트 복사</button>`:''}</div>`;
+        <button class="btn sub" data-act="ptpl-reset">기본값으로 되돌리기</button>`:''}</div>`;
   }
+  const out=S.gen?`<div class="fld">
+      <textarea class="ta" id="genOut" style="min-height:200px" readonly>${esc(S.gen)}</textarea>
+      <button class="btn" data-act="copy">프롬프트 복사</button></div>`:'';
   return `<div class="pad">
-    <div class="card">
-      <div class="sec">프롬프트 생성기</div>
-      <div class="note">AI 채팅에 붙여넣을 지시문을 만듭니다. 속도는 창고에서 조절하므로 프롬프트에는 시간 항목이 들어가지 않습니다.</div>
-      ${seg}
-      ${body}
-    </div>
+    ${seg}
+    ${foldCard('make', modeName+' 만들기', '개수와 주제를 고른다',
+      `<div class="note">AI 채팅에 붙여넣을 ${modeName} 지시문을 만듭니다. 속도는 창고에서 조절합니다.</div>${make}`, true)}
+    ${foldCard('tpl', '기본 프롬프트', modeName+(DB.tpl||DB.ptpl||DB.qtpl||DB.mtpl?' · 수정됨':' · 원문 고치기'), edit, false)}
+    ${S.gen?foldCard('out', '만든 '+modeName+' 프롬프트', '복사해서 채팅에 붙여넣기', out, true):''}
   </div>`;
 }
 function vStock(){
   const c=DB.cfg;
   const waiting=DB.feed.length-DB.revealed;
-  return `<div class="pad">
-    <div class="card">
-      <div class="sec">글 불러오기</div>
-      <div class="note">AI가 출력한 내용을 그대로 붙여넣으세요. 코드펜스나 앞뒤 설명이 섞여 있어도 배열만 뽑아냅니다.
+  const pwait=DB.polls.length-DB.prevealed;
+  const load=`<div class="note">AI가 출력한 내용을 그대로 붙여넣으세요. 코드펜스나 앞뒤 설명이 섞여 있어도 배열만 뽑아냅니다.
         JSON이 <b>여러 세트</b>여도 한 번에 붙여넣으면 전부 뒤에 이어 쌓입니다.</div>
       <div class="fld">
         <textarea class="ta" id="paste" placeholder='[ { "title": "...", "body": "..." } ]'>${esc(S.pasted)}</textarea>
@@ -2430,17 +2455,13 @@ function vStock(){
         <button class="btn sub" data-act="pick-file">파일에서 불러오기 (.json / .txt)</button>
       </div>
       <div class="sec" style="padding-top:4px">글 ${DB.feed.length}개 (대기 ${waiting}) ·
-        투표 ${DB.polls.length}개 (대기 ${DB.polls.length-DB.prevealed})</div>
+        투표 ${DB.polls.length}개 (대기 ${pwait})</div>
       ${(S.srcOpen?DB.sources:DB.sources.slice(-3)).map(x=>
         `<div class="src-item"><span class="n">${esc(x.name)}</span>
           <span class="c">${x.count}개</span></div>`).join('')}
       ${DB.sources.length>3?`<button class="more-btn" data-act="src-toggle">
-        ${S.srcOpen?'접기':`이전 기록 ${DB.sources.length-3}개 더 보기`}</button>`:''}
-    </div>
-
-    <div class="card">
-      <div class="sec">공개 속도</div>
-      ${slider('postGap',c.postGap,'글 올라오는 간격','다음 글이 게시판에 올라오기까지')}
+        ${S.srcOpen?'접기':`이전 기록 ${DB.sources.length-3}개 더 보기`}</button>`:''}`;
+  const speed=`${slider('postGap',c.postGap,'글 올라오는 간격','다음 글이 게시판에 올라오기까지')}
       ${slider('commentGap',c.commentGap,'댓글 달리는 간격','한 글에 댓글이 하나씩 붙는 속도')}
       ${slider('replyDelay',c.replyDelay,'답글 지연','선택지를 누른 뒤 답글이 오기까지 (실제 초)')}
       <div class="row"><div class="k">시간대 반영
@@ -2449,12 +2470,8 @@ function vStock(){
           : '꺼짐 · 하루 종일 같은 속도'}</small></div>
         <button class="pill ${DB.cfg.tod!==false?'on':''}" data-act="tod">
           ${DB.cfg.tod!==false?'켜짐':'꺼짐'}</button></div>
-      <div class="fld"><button class="btn sub" data-act="skip">다음 글 지금 공개</button></div>
-    </div>
-
-    <div class="card">
-      <div class="sec">시장 운영</div>
-      ${slider('mK',c.mK,'시세 변동 계수','언급이 시세에 얼마나 크게 반영되는지')}
+      <div class="fld"><button class="btn sub" data-act="skip">다음 글 지금 공개</button></div>`;
+  const market=`${slider('mK',c.mK,'시세 변동 계수','언급이 시세에 얼마나 크게 반영되는지')}
       ${slider('mHi',c.mHi,'상한 배수','시세가 기준가의 몇 배까지 오를 수 있는지')}
       ${slider('mLo',c.mLo,'하한 배수','이 비율에 닿으면 매물이 내려간다')}
       ${slider('mSlots',c.mSlots,'동시 노출 수','시장에 한꺼번에 올라오는 매물 수')}
@@ -2462,12 +2479,8 @@ function vStock(){
       ${slider('mFill',c.mFill,'체결 시간 배수','호가 유리·불리로 정해진 대기 시간에 곱한다')}
       ${slider('mCred',c.mCred,'크레딧 보상량','공감·댓글·투표로 받는 크레딧 배율')}
       ${slider('mBand',c.mBand,'감상평 구간 경계','등장 시세가 이 선을 넘으면 상승/하락 감상평')}
-      ${slider('mWin',c.mWin,'변동률 비교 구간','현재가를 몇 분 전 값과 비교할지')}
-    </div>
-
-    <div class="card">
-      <div class="sec">백업</div>
-      <div class="note">데이터는 이 브라우저의 <b>현재 주소</b>에만 저장됩니다.
+      ${slider('mWin',c.mWin,'변동률 비교 구간','현재가를 몇 분 전 값과 비교할지')}`;
+  const backup=`<div class="note">데이터는 이 브라우저의 <b>현재 주소</b>에만 저장됩니다.
         파일을 다른 이름으로 다시 받거나 주소가 바뀌면 빈 상태로 시작합니다.
         <b>인물을 등록한 뒤에는 꼭 백업 파일을 받아두세요.</b></div>
       <div class="fld">
@@ -2484,28 +2497,26 @@ function vStock(){
         <textarea class="ta" id="ppaste" style="min-height:90px" placeholder='[{"name":"김대현 교수","role":"전공 교수"}]'>${esc(S.ppaste)}</textarea>
         <button class="btn sub" data-act="people-add">인물 목록 붙여넣어 추가</button>
         <button class="btn sub" data-act="people-copy" style="margin-top:8px">지금 인물 ${DB.people.length}명 복사</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="sec">저장 공간</div>
-      <div class="row"><div class="k">저장 방식
+      </div>`;
+  const quota=`<div class="row"><div class="k">저장 방식
         <small>${idb?'IndexedDB — 브라우저가 허용하는 만큼 넉넉하게 씁니다':'브라우저 기본 저장소 — 약 5MB까지 저장됩니다'}</small></div></div>
       <div class="row"><div class="k">사용량
         <small>${S.quota?`${fmtMB(S.quota.use)} 사용 중${S.quota.max?` · 한도 ${fmtMB(S.quota.max)}`:''}`:'확인 중…'}</small></div></div>
       <div class="fld"><button class="btn sub" data-act="persist">저장 공간 보호 요청</button></div>
       <div class="note" style="padding:0 14px 14px">브라우저가 공간이 부족할 때 데이터를 지우지 않도록 요청합니다.
-        허용 여부는 브라우저가 정합니다.</div>
-    </div>
-
-    <div class="card">
-      <div class="sec">초기화</div>
-      <div class="note">기본으로 들어 있는 글과 투표만 게시판에서 빼고 처음부터 다시 올라오게 합니다.
+        허용 여부는 브라우저가 정합니다.</div>`;
+  const wipe=`<div class="note">기본으로 들어 있는 글과 투표만 게시판에서 빼고 처음부터 다시 올라오게 합니다.
         그 글에 단 댓글·공감도 함께 지워집니다. 붙여넣은 글, 인물, 시장, 업적은 그대로입니다.</div>
       <div class="fld"><button class="btn sub" data-act="reset-sample">샘플 게시글 다시 넣기</button></div>
       <div class="note">쌓아둔 글, 공개된 게시글, 내가 단 댓글이 모두 지워지고 처음 상태로 돌아갑니다.</div>
-      <div class="fld"><button class="btn danger" data-act="reset">데이터 초기화</button></div>
-    </div>
+      <div class="fld"><button class="btn danger" data-act="reset">데이터 초기화</button></div>`;
+  return `<div class="pad">
+    ${foldCard('import','글 불러오기',`대기 글 ${waiting} · 투표 ${pwait}`,load,true)}
+    ${foldCard('speed','공개 속도','간격 · 시간대 · 지금 공개',speed,false)}
+    ${foldCard('mkset','시장 운영','시세 · 매물 수 · 체결',market,false)}
+    ${foldCard('backup','백업','파일 저장 · 복원 · 인물 옮기기',backup,false)}
+    ${foldCard('quota','저장 공간',S.quota?fmtMB(S.quota.use)+' 사용 중':'확인 중',quota,false)}
+    ${foldCard('wipe','초기화','샘플 글 · 전체 데이터',wipe,false)}
     <div class="note" style="text-align:center;padding:18px 0 8px">캠퍼스타임 · 데이터는 이 브라우저에만 저장됩니다</div>
   </div>`;
 }
@@ -2624,6 +2635,7 @@ function buildPoll(){
     .split('{개수}').join(S.g.qn)
     .split('{주제}').join(String(S.g.qtopic||'').trim()||'대학 생활 전반')
     .split('{누적}').join(DB.polls.length);
+  S.fold=S.fold||{}; S.fold.out=1;
   render();
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
 }
@@ -2671,6 +2683,7 @@ function buildPrompt(){
     .split('{사진필드}').join(imgField)
     .split('{사진규칙}').join(imgRule)
     .split('{인물}').join(cast);
+  S.fold=S.fold||{}; S.fold.out=1;
   render();
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
 }
@@ -2696,7 +2709,7 @@ function back(){
 
 document.addEventListener('click',e=>{
   if(!DB) return;
-  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend]');
+  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold]');
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
@@ -2748,6 +2761,11 @@ document.addEventListener('click',e=>{
   if(d.reply){ S.replyTo=+d.reply; render(); const i=$('#cIn'); if(i) i.focus(); return; }
   if(d.cfg){ const a=d.cfg.split(':'); DB.cfg[a[0]]=parseFloat(a[1]); save(); tick(); return render(); }
   if(d.gmode){ S.genMode=d.gmode; S.gen=''; return render(); }
+  if(d.fold){
+    S.fold=S.fold||{};
+    S.fold[d.fold]=S.fold[d.fold]?0:1;
+    return render();
+  }
 
   switch(d.act){
     case 'back': back(); break;
@@ -2799,9 +2817,9 @@ document.addEventListener('click',e=>{
       const el=$('#paste'); const v=el?el.value:'';
       if(!v.trim()) return toast('붙여넣은 내용이 없습니다');
       S.pasted=''; addFeed(v,'붙여넣기'); break; }
-    case 'gen': buildPrompt(); break;
-    case 'gen-poll': buildPoll(); break;
-    case 'gen-market': buildMarket(); break;
+    case 'gen':
+    case 'gen-poll':
+    case 'gen-market': buildByMode(); break;
     case 'mtpl-toggle': S.mtplEdit=!S.mtplEdit; if(!S.mtplEdit) S.mtplDraft=null; render(); break;
     case 'mtpl-save': {
       const el=$('#mtplBox'); const v=el?el.value:'';
