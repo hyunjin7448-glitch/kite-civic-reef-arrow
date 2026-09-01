@@ -217,6 +217,14 @@
   .cal-range .pill-d small{display:block;font-size:10.5px;font-weight:700;color:var(--faint);margin-bottom:3px}
   .cal-range .pill-d b{display:block;font-size:13.5px;font-weight:800}
   .cal-range .arr{color:var(--faint);font-size:14px;flex:0 0 auto}
+  .qty-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 12px}
+  .qty-cell{border:1px solid var(--line);border-radius:14px;padding:10px 6px 12px;text-align:center;background:#fff}
+  .qty-cell small{display:block;font-size:11px;font-weight:800;color:var(--faint);margin-bottom:4px}
+  .qty-cell .num{font-size:26px;font-weight:800;letter-spacing:-.05em;line-height:1.1}
+  .qty-cell .pm{display:flex;justify-content:center;gap:8px;margin-top:8px}
+  .qty-cell .pm button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
+    font-size:18px;font-weight:800;background:var(--bg);line-height:1}
+  .qty-cell .pm button:active{background:var(--red-dim);border-color:var(--red);color:var(--red)}
   .cal-ev{display:flex;gap:8px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line);text-align:left;width:100%;background:none}
   .cal-ev .sw{width:8px;height:8px;border-radius:50%;flex:0 0 auto;margin-top:6px}
   .cal-ev .tt{flex:1;font-size:13.5px;font-weight:700;line-height:1.4}
@@ -983,7 +991,7 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
   qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,atplEdit:false,atplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
   backupText:'',ppaste:'',gpaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
   playing:false,cover:'in',feedCat:'all',
-  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,calTab:'view',mine:'me',photoFor:'',bandLock:0,
+  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,calTab:'view',mine:'me',photoFor:'',bandLock:0,qtyY:null,qtyM:null,qtyDay:'',qtySlot:0,
   fold:{import:1,make:1}, sldOpen:{},
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
@@ -2392,6 +2400,11 @@ function bandKey(t){ return [t.y,t.m,t.d,t.a,t.b].join('-'); }
 function applyBand(t){
   S.g.yy=String(t.y); S.g.mm=String(t.m); S.g.dd=String(t.d);
   S.g.h0=String(t.a); S.g.h1=String(t.b);
+  S.qtyY=t.y; S.qtyM=t.m; S.qtyDay=ymd(t.y,t.m,t.d);
+  const si=SLOTS.findIndex(s=>s[0]===t.a);
+  S.qtySlot=si<0?0:si;
+  const x=(DB.tl||[]).find(z=>tlEq(z,t));
+  if(x) qtyApply(x);
 }
 function bandPast(t, now){
   if(now.y!==t.y) return now.y>t.y;
@@ -2423,7 +2436,8 @@ function fillDay(y,m,d){
   DB.tl=DB.tl||[];
   SLOTS.forEach(s=>{
     if(!DB.tl.some(x=>x.y===y&&x.m===m&&x.d===d&&x.a===s[0]&&x.b===s[1]))
-      DB.tl.push({id:uid(), y, m, d, a:s[0], b:s[1], st:'wait'});
+      DB.tl.push({id:uid(), y, m, d, a:s[0], b:s[1], st:'wait',
+        n:+S.g.n||0, qn:+S.g.qn||0, mn:+S.g.mn||0, imgPct:+S.g.imgPct||0});
   });
   sortTl();
 }
@@ -2439,6 +2453,62 @@ function pickTl(x){
   S.bandLock=1;
   S.g.yy=String(x.y); S.g.mm=String(x.m); S.g.dd=String(x.d);
   S.g.h0=String(x.a); S.g.h1=String(x.b);
+  S.qtyY=x.y; S.qtyM=x.m; S.qtyDay=ymd(x.y,x.m,x.d);
+  const si=SLOTS.findIndex(s=>s[0]===x.a);
+  S.qtySlot=si<0?0:si;
+  qtyApply(x);
+}
+function qtyOf(x){
+  x=x||{};
+  return {
+    n:x.n!=null?+x.n:(+S.g.n||0),
+    qn:x.qn!=null?+x.qn:(+S.g.qn||0),
+    mn:x.mn!=null?+x.mn:(+S.g.mn||0),
+    imgPct:x.imgPct!=null?+x.imgPct:(+S.g.imgPct||0)
+  };
+}
+function qtyApply(x){
+  const q=qtyOf(x);
+  S.g.n=String(q.n); S.g.qn=String(q.qn); S.g.mn=String(q.mn); S.g.imgPct=String(q.imgPct);
+}
+function qtyEnsure(){
+  const w=worldDate();
+  if(!S.qtyY) S.qtyY=w.getFullYear();
+  if(!S.qtyM) S.qtyM=w.getMonth()+1;
+  if(!S.qtyDay) S.qtyDay=ymd(w.getFullYear(), w.getMonth()+1, w.getDate());
+  if(S.qtySlot==null||S.qtySlot===''){
+    const si=SLOTS.findIndex(s=>s[0]===clockBand().a);
+    S.qtySlot=si<0?0:si;
+  }
+  const p=parseYmd(S.qtyDay);
+  if(p) fillDay(p.y,p.m,p.d);
+}
+function qtySlotItem(){
+  qtyEnsure();
+  const p=parseYmd(S.qtyDay); if(!p) return null;
+  const s=SLOTS[+S.qtySlot]||SLOTS[0];
+  fillDay(p.y,p.m,p.d);
+  return (DB.tl||[]).find(z=>z.y===p.y&&z.m===p.m&&z.d===p.d&&z.a===s[0])||null;
+}
+function qtyAdj(key, dir){
+  const d=SLD[key]; if(!d) return;
+  const x=qtySlotItem(); if(!x) return;
+  const step=d.step||1;
+  let v=(qtyOf(x)[key]||0)+dir*step;
+  v=Math.max(d.min, Math.min(d.max, v));
+  x[key]=v;
+  qtyApply(x);
+  S.bandLock=1;
+  pickTl(x);
+  save(); render();
+}
+function qtyDayChips(day){
+  return (DB.tl||[]).filter(x=>ymd(x.y,x.m,x.d)===day).map(x=>{
+    const q=qtyOf(x);
+    const tot=q.n+q.qn+q.mn;
+    if(!tot) return null;
+    return {text:x.a+'시 '+q.n+'·'+q.qn+'·'+q.mn, col:['#E3F2FD','#1565C0']};
+  }).filter(Boolean);
 }
 function pickNextTl(){
   ensureTl(); sortTl();
@@ -2592,25 +2662,31 @@ function calMonthCells(y,m){
   return cells;
 }
 function calGridHTML(opts){
-  calEnsure();
-  const y=S.calY, m=S.calM;
+  opts=opts||{};
+  if(!opts.skipEnsure) calEnsure();
+  const y=opts.y!=null?opts.y:S.calY, m=opts.m!=null?opts.m:S.calM;
   const cells=calMonthCells(y,m);
-  const sel=S.calDay;
+  const sel=opts.sel!=null?opts.sel:S.calDay;
   const end=opts.range && S.calTo && S.calTo>=sel ? S.calTo : sel;
   const w=worldDate();
   const today=ymd(w.getFullYear(), w.getMonth()+1, w.getDate());
+  const nav=opts.nav||'cnav';
+  const dayK=opts.day||'cday';
+  const todayAct=opts.today||'cal-today';
   return `<div class="cal-top">
-        <button type="button" class="icon-btn" data-cnav="-1" aria-label="이전 달">‹</button>
+        <button type="button" class="icon-btn" data-${nav}="-1" aria-label="이전 달">‹</button>
         <b>${y}년 ${m}월</b>
-        <button type="button" class="cal-today" data-act="cal-today">오늘</button>
-        <button type="button" class="icon-btn" data-cnav="1" aria-label="다음 달">›</button>
+        <button type="button" class="cal-today" data-act="${todayAct}">오늘</button>
+        <button type="button" class="icon-btn" data-${nav}="1" aria-label="다음 달">›</button>
       </div>
       <div class="cal-wk">${'일월화수목금토'.split('').map(x=>`<span>${x}</span>`).join('')}</div>
       <div class="cal-grid">${cells.map(c=>{
         const day=ymd(c.y,c.m,c.d);
-        const evs=calOnDay(day);
-        const extra=Math.max(0, evs.length-3);
-        const show=opts.chips?evs.slice(0,3):[];
+        const show=opts.chipFn?opts.chipFn(day):(opts.chips?calOnDay(day).slice(0,3).map(e=>{
+          const col=calColor(e); return {text:e.text, col};
+        }):[]);
+        const extra=opts.chipFn?Math.max(0, show.length-3):Math.max(0, calOnDay(day).length-3);
+        const vis=show.slice(0,3);
         const cls=['cal-cell',
           c.w===0?'sun':'', c.w===6?'sat':'',
           c.mute?'mute':'',
@@ -2618,14 +2694,45 @@ function calGridHTML(opts){
           day===sel?'on':'',
           (opts.range && day>sel && day<=end)?'in':''
         ].filter(Boolean).join(' ');
-        return `<button type="button" class="${cls}" data-cday="${day}">
+        return `<button type="button" class="${cls}" data-${dayK}="${day}">
           <span class="dn">${c.d}</span>
-          <span class="cal-chips">${show.map(e=>{
-            const col=calColor(e);
-            return `<span class="cal-chip" style="background:${col[0]};color:${col[1]}">${esc(e.text)}</span>`;
-          }).join('')}${extra&&opts.chips?`<span class="cal-chip more">+${extra}개 더</span>`:''}</span>
+          <span class="cal-chips">${vis.map(e=>{
+            const col=e.col||calColor(e);
+            const tx=e.text||e;
+            return `<span class="cal-chip" style="background:${col[0]};color:${col[1]}">${esc(tx)}</span>`;
+          }).join('')}${extra&&(opts.chips||opts.chipFn)?`<span class="cal-chip more">+${extra}개 더</span>`:''}</span>
         </button>`;
       }).join('')}</div>`;
+}
+function qtyHTML(){
+  qtyEnsure();
+  const x=qtySlotItem();
+  const q=qtyOf(x);
+  const slotLab=['0~6','6~12','12~18','18~24'];
+  const cell=(key,label)=>`<div class="qty-cell">
+      <small>${label}</small>
+      <div class="num">${q[key]}</div>
+      <div class="pm">
+        <button type="button" data-qadj="${key}:-1" aria-label="${label} 줄이기">−</button>
+        <button type="button" data-qadj="${key}:1" aria-label="${label} 늘리기">+</button>
+      </div></div>`;
+  return `<div class="cal-page">${calGridHTML({
+        skipEnsure:1, y:S.qtyY, m:S.qtyM, sel:S.qtyDay, nav:'qnav', day:'qday', today:'qty-today',
+        chipFn:qtyDayChips
+      })}
+      <div class="cal-body">
+        <div class="sec" style="padding:0 0 8px">${calLbl(S.qtyDay)} · ${slotLab[+S.qtySlot]||'구간'}시</div>
+        <div class="mk-cats" style="padding:0 0 10px;border:0;background:none">
+          ${SLOTS.map((s,i)=>`<button type="button" class="mk-cat ${+S.qtySlot===i?'on':''}" data-qslot="${i}">${slotLab[i]}</button>`).join('')}
+        </div>
+        <div class="qty-grid">${cell('n','게시글')}${cell('qn','투표')}${cell('mn','물품')}</div>
+        <div class="sec" style="padding:0 0 8px">사진 비율 ${q.imgPct}%</div>
+        <div class="mk-cats" style="padding:0 0 8px;border:0;background:none">
+          ${[0,10,30,50,70,100].map(v=>`<button type="button" class="mk-cat ${q.imgPct===v?'on':''}" data-qpct="${v}">${v===0?'없음':v+'%'}</button>`).join('')}
+        </div>
+        <div class="note" style="padding:0 0 8px">날짜와 구간을 고른 뒤 칸을 눌러 개수를 정합니다. 이 구간 프롬프트에 그대로 들어갑니다.</div>
+      </div>
+    </div>`;
 }
 function calTabs(){
   return `<div class="mine-tabs">
@@ -3379,11 +3486,7 @@ function vLab(){
   const peopleN=DB.people.length;
   const n=+S.g.n||0, qn=+S.g.qn||0, mn=+S.g.mn||0;
   ensureTl();
-  const qty=`<div class="note">개수를 0으로 두면 그 종류는 만들지 않습니다.</div>
-      ${slider('n',S.g.n,'게시글 개수','한 번에 만들 글 수')}
-      ${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수')}
-      ${slider('mn',S.g.mn,'물품 개수','한 번에 만들 거래 글 수')}
-      ${slider('imgPct',S.g.imgPct,'사진 넣는 비율','사진 설명이 붙는 게시글의 비율')}`;
+  const qty=qtyHTML();
   const topic=`<div class="fld"><label>게시글 주제 힌트</label>
         <input id="gT" value="${esc(S.g.topic)}"></div>
       <div class="fld"><label>투표 소재 힌트</label>
@@ -3717,7 +3820,7 @@ function back(){
 
 document.addEventListener('click',e=>{
   if(!DB) return;
-  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot],[data-mine],[data-caltab],[data-sld],[data-fcat]');
+  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot],[data-mine],[data-caltab],[data-sld],[data-fcat],[data-qday],[data-qnav],[data-qslot],[data-qadj],[data-qpct]');
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
@@ -3728,6 +3831,40 @@ document.addEventListener('click',e=>{
   if(d.mine){ S.mine=d.mine; S.view='mine'; S.tab='mine'; lastView=null; return render(); }
   if(d.caltab){ S.calTab=d.caltab; S.calPick=0; lastView=null; return render(); }
   if(d.fcat){ S.feedCat=d.fcat; lastView=null; return render(); }
+  if(d.qday){
+    const p=parseYmd(d.qday);
+    if(p){
+      S.qtyDay=d.qday; S.qtyY=p.y; S.qtyM=p.m;
+      fillDay(p.y,p.m,p.d);
+      const x=qtySlotItem();
+      if(x) pickTl(x);
+      save();
+    }
+    return render();
+  }
+  if(d.qnav){
+    qtyEnsure();
+    S.qtyM+=(+d.qnav||0);
+    if(S.qtyM<1){ S.qtyM=12; S.qtyY--; }
+    if(S.qtyM>12){ S.qtyM=1; S.qtyY++; }
+    return render();
+  }
+  if(d.qslot!=null && d.qslot!==''){
+    S.qtySlot=+d.qslot;
+    const x=qtySlotItem();
+    if(x) pickTl(x);
+    return render();
+  }
+  if(d.qadj){
+    const a=String(d.qadj).split(':');
+    qtyAdj(a[0], +a[1]||0);
+    return;
+  }
+  if(d.qpct!=null && d.qpct!==''){
+    const x=qtySlotItem();
+    if(x){ x.imgPct=+d.qpct; qtyApply(x); S.bandLock=1; pickTl(x); save(); }
+    return render();
+  }
   if(d.sld){
     S.sldOpen=S.sldOpen||{};
     S.sldOpen[d.sld]=S.sldOpen[d.sld]?0:1;
@@ -3844,6 +3981,14 @@ document.addEventListener('click',e=>{
     case 'cal-add': calAdd(); break;
     case 'cal-del': calDel(d.cal); break;
     case 'cal-today': calToday(); break;
+    case 'qty-today': {
+      const w=worldDate();
+      S.qtyY=w.getFullYear(); S.qtyM=w.getMonth()+1;
+      S.qtyDay=ymd(S.qtyY,S.qtyM,w.getDate());
+      const si=SLOTS.findIndex(s=>s[0]===clockBand().a);
+      S.qtySlot=si<0?0:si;
+      const x=qtySlotItem(); if(x) pickTl(x);
+      render(); break; }
     case 'cal-goto-add': S.calTab='add'; S.calPick=0; lastView=null; render(); break;
     case 'cal-pickto': S.calTab='add'; S.calPick=1; render(); toast('끝나는 날을 달력에서 누르세요'); break;
     case 'cal-pickfrom': S.calPick=0; S.calTo=''; render(); break;
