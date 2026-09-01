@@ -982,7 +982,7 @@ let DB=null;
 const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen:'',pasted:'',genMode:'all',tplEdit:false,tplDraft:null,ptplEdit:false,ptplDraft:null,
   qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,atplEdit:false,atplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
   backupText:'',ppaste:'',gpaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
-  playing:false,cover:'in',
+  playing:false,cover:'in',feedCat:'all',
   calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,calTab:'view',mine:'me',photoFor:'',bandLock:0,
   fold:{import:1,make:1}, sldOpen:{},
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
@@ -2884,7 +2884,24 @@ function renderNav(){
 
 const isPoll=p=>p.pk==='poll';
 const totalVotes=p=>(p.votes||[]).reduce((a,b)=>a+b,0);
-function vFeed(){ return listOf(DB.posts,'아직 올라온 글이 없습니다.'); }
+function vFeed(){
+  const cat=S.feedCat||'all';
+  const list=(DB.posts||[]).filter(p=>{
+    if(cat==='trade') return isTrade(p);
+    if(cat==='poll') return isPoll(p);
+    if(cat==='feed') return !isTrade(p)&&!isPoll(p);
+    return true;
+  });
+  const empty=cat==='trade'?'아직 거래 글이 없습니다.'
+    :cat==='poll'?'아직 투표가 없습니다.'
+    :cat==='feed'?'아직 일반 글이 없습니다.'
+    :'아직 올라온 글이 없습니다.';
+  const tabs=`<div class="mine-tabs">
+    ${[['all','전체'],['feed','일반'],['trade','거래'],['poll','투표']].map(([k,l])=>
+      `<button type="button" data-fcat="${k}" class="${cat===k?'on':''}">${l}</button>`).join('')}
+  </div>`;
+  return tabs+listOf(list, empty);
+}
 function vPoll(){ return vFeed(); }
 function ptrHTML(){
   return `<div class="ptr" id="ptr"><span class="ring" id="ptrRing"></span>
@@ -3688,7 +3705,7 @@ function back(){
 
 document.addEventListener('click',e=>{
   if(!DB) return;
-  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot],[data-mine],[data-caltab],[data-sld]');
+  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot],[data-mine],[data-caltab],[data-sld],[data-fcat]');
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
@@ -3698,6 +3715,7 @@ document.addEventListener('click',e=>{
   }
   if(d.mine){ S.mine=d.mine; S.view='mine'; S.tab='mine'; lastView=null; return render(); }
   if(d.caltab){ S.calTab=d.caltab; S.calPick=0; lastView=null; return render(); }
+  if(d.fcat){ S.feedCat=d.fcat; lastView=null; return render(); }
   if(d.sld){
     S.sldOpen=S.sldOpen||{};
     S.sldOpen[d.sld]=S.sldOpen[d.sld]?0:1;
