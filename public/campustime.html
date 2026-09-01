@@ -833,8 +833,8 @@ const DEFAULT_ATPL=`{시점}
 개수가 0인 종류는 해당 배열을 [] 로 비워라. 키(posts/polls/market)는 빼지 마라.
 
 게시글 규칙:
-- time — 캠퍼스 게시판에 올라온 시각. "HH:MM" 24시간제. 오늘 0:00부터 지금 사이에만. 미래는 넣지 마라.
-  글마다 시각을 다르게. 지금에 가까운 글이 더 많게.
+- time — 캠퍼스 게시판에 올라온 시각. "HH:MM" 24시간제. 지시된 날짜·시간 구간 안에만. 구간 밖은 넣지 마라.
+  글마다 시각을 다르게 흩어라.
 - comments[].writer — 글쓴이 본인의 댓글이면 true.
 - comments[].reply — 몇 번째 댓글(0부터)에 대댓글로 달지. 없는 번호를 쓰지 마라.
 - choices — 글마다 3~4개. 읽는 사람이 버튼으로 고를 댓글이다.
@@ -848,7 +848,7 @@ const DEFAULT_ATPL=`{시점}
 - 게시판은 하나뿐이니 분류하지 말고 한 줄기로 써라.
 
 투표 규칙:
-- time은 게시글과 같다. 오늘 지금 이전.
+- time은 게시글과 같다. 지시된 구간 안에만.
 - options는 2개를 기본으로. 3~4개는 정말 필요할 때만. 문구는 12자를 넘기지 마라.
 - votes는 초기 득표. 30~500 사이에서 한쪽으로 기울게. 반반은 재미없다.
 - title은 "A vs B" 형태거나 질문형. body는 조건을 한 줄로.
@@ -856,7 +856,7 @@ const DEFAULT_ATPL=`{시점}
 - 둘 다 그럴듯한 양자택일. 명백한 정답 금지.
 
 물품 규칙:
-- time은 게시글과 같다. 오늘 지금 이전.
+- time은 게시글과 같다. 지시된 구간 안에만.
 - 게시판에 [거래] 말머리로 올라가는 글이다. 제목은 반드시 "[거래] "로 시작해라.
 - owner — 아래 인물 목록에 있는 이름을 그대로. 목록에 없는 인물을 지어내지 마라. 골고루 배정해라.
 - name — 물건 이름. 누구 물건인지 드러나게. price 500~5000.
@@ -889,7 +889,9 @@ const SLD={
   mn:{min:0,max:20,step:1, fmt:v=>v+'개', ends:['0개','20개']},
   yy:{min:2026,max:2036,step:1, fmt:v=>v+'년', ends:['2026','2036']},
   mm:{min:1,max:12,step:1, fmt:v=>v+'월', ends:['1월','12월']},
-  ww:{min:1,max:5,step:1, fmt:v=>v+'주차', ends:['1주차','5주차']},
+  dd:{min:1,max:31,step:1, fmt:v=>v+'일', ends:['1일','31일']},
+  h0:{min:0,max:23,step:1, fmt:v=>v+'시', ends:['0시','23시']},
+  h1:{min:1,max:24,step:1, fmt:v=>v+'시', ends:['1시','24시']},
   arcPct:{min:0,max:50,step:5, fmt:v=>v==0?'없음':v+'%', ends:['없음','50%']},
   evPct:{min:5,max:50,step:5, fmt:v=>v+'%', ends:['낮음','높음']},
   timeScale:{list:[1,6,12,24,48,72,144],
@@ -941,7 +943,7 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
      mtopic:'교재, 전자기기, 옷, 자취 살림',
      evOn:'0',ev:'',evPct:'20',
-     yy:'2026',mm:'9',ww:'1'},
+     yy:'2026',mm:'9',dd:'1',h0:'0',h1:'6'},
   pd:null};
 
 function fresh(){
@@ -2203,32 +2205,51 @@ function mkTradeHTML(it,q){
   </div>`;
 }
 function weekLabel(){
-  const d=worldDate();
-  const days='일월화수목금토';
-  return d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 '+days[d.getDay()]+'요일';
+  return rangeStamp();
+}
+function hourBand(){
+  const y=Math.max(2026, Math.min(2036, +S.g.yy||2026));
+  const m=Math.max(1, Math.min(12, +S.g.mm||1));
+  const d=Math.max(1, Math.min(31, +S.g.dd||1));
+  let a=Math.max(0, Math.min(23, +S.g.h0||0));
+  let b=Math.max(1, Math.min(24, +S.g.h1||6));
+  if(b<=a) b=Math.min(24,a+6);
+  return {y,m,d,a,b};
+}
+function rangeStamp(){
+  const t=hourBand();
+  return t.y+'년 '+t.m+'월 '+t.d+'일 '+t.a+'시~'+t.b+'시';
 }
 function clockStamp(){
   const d=worldDate();
+  const days='일월화수목금토';
   const h=d.getHours();
   const ap=h<5?'새벽':h<12?'오전':h<18?'오후':'밤';
   const h12=h%12||12;
   const mm=String(d.getMinutes()).padStart(2,'0');
-  return weekLabel()+' '+ap+' '+h12+':'+mm;
+  return d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 '+days[d.getDay()]+'요일 '+ap+' '+h12+':'+mm;
 }
 function nowHM(){
   const d=worldDate();
   return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
 function todHint(){
-  const h=worldDate().getHours();
-  if(h>=2&&h<7) return '새벽이다. 잠 못 잔 사람, 올빼미 야작, 조용한 한숨. 통학·첫 수업 이야기는 거의 없다.';
-  if(h>=7&&h<9) return '아침이다. 통학, 출석, 첫 수업, 아침 학식, 자리 잡기.';
-  if(h>=9&&h<12) return '오전 수업 시간이다. 강의, 출석, 빈 자리, 과제 공지.';
-  if(h>=12&&h<14) return '점심이다. 학식, 줄, 메뉴, 밥약, 빈 강의실.';
-  if(h>=14&&h<18) return '오후 수업 시간이다. 수업, 팀플, 과제, 동아리, 도서관.';
-  if(h>=18&&h<21) return '저녁이다. 수업 끝, 알바, 저녁, 야자 자리.';
-  if(h>=21) return '밤이다. 야작, 야식, 벼락치기, 자취, 내일 수업 걱정.';
-  return '자정 이후다. 잠 안 오는 사람, 밤샘, 조용한 하소연.';
+  const t=hourBand();
+  const mid=(t.a+t.b)/2;
+  if(mid<=3) return '자정~새벽이다. 잠 못 잔 사람, 올빼미 야작, 조용한 한숨. 통학·첫 수업 이야기는 거의 없다.';
+  if(mid<=9) return '새벽~아침이다. 잠에서 깸, 통학, 출석, 첫 수업, 아침 학식.';
+  if(mid<=12) return '오전이다. 강의, 출석, 빈 자리, 과제 공지.';
+  if(mid<=15) return '점심~이른 오후다. 학식, 줄, 밥약, 오후 수업.';
+  if(mid<=19) return '오후~저녁이다. 수업 끝, 팀플, 알바, 저녁.';
+  return '밤이다. 야작, 야식, 벼락치기, 자취, 내일 수업 걱정.';
+}
+function slotHTML(){
+  const t=hourBand();
+  const slots=[[0,6],[6,12],[12,18],[18,24]];
+  return `<div class="mk-cats" style="padding:6px 0 8px;border:0;background:none">${slots.map((s,i)=>{
+    const on=t.a===s[0]&&t.b===s[1];
+    return `<button type="button" class="mk-cat ${on?'on':''}" data-slot="${i}">${s[0]}시~${s[1]}시</button>`;
+  }).join('')}</div>`;
 }
 function atpl(){ return (DB.atpl&&DB.atpl.trim())?DB.atpl:DEFAULT_ATPL; }
 function buildAll(){
@@ -2246,15 +2267,16 @@ function buildAll(){
   const aPct=Math.max(0, Math.min(50, +S.g.arcPct||15));
   const withArc=S.g.arc!=='0' && total>0 && aPct>0;
   const arcN=withArc?Math.max(1, Math.round(total*aPct/100)):0;
-  const when=clockStamp();
-  const hm=nowHM();
-  const whenBlock=when+' 게시물•물품•투표\n'
-    +'오늘은 이 하루만. 지금은 캠퍼스 시각 '+hm+' · '+todNow()[3]+'. '+todHint()+'\n'
-    +'글·댓글·투표·거래는 전부 오늘, 이 시간대에 올라온 것처럼 써라.\n'
-    +'아침 글에 야식을 넣거나, 밤에 첫 수업 출석 글을 쓰지 마라.\n'
-    +'학사 일정·날씨·유행도 오늘에 맞게. 어제·다른 날 이야기는 쓰지 마라.\n'
-    +'각 항목에 "time": "HH:MM" 을 넣어라. 오늘 00:00부터 지금 '+hm+' 사이. 미래 시각은 넣지 마라.\n'
-    +'글마다 시각을 다르게, 지금에 가까운 글이 더 많게. 제목·본문에 시계 숫자를 박지 말고 생활의 결로 보여라.';
+  const t=hourBand();
+  const when=rangeStamp()+' 글';
+  const lo=String(t.a).padStart(2,'0')+':00';
+  const hi=t.b>=24?'24:00':(String(t.b).padStart(2,'0')+':00');
+  const whenBlock=when+'\n'
+    +'이 구간만 다뤄라. '+t.a+'시부터 '+t.b+'시 직전까지. '+todHint()+'\n'
+    +'글·댓글·투표·거래는 전부 이 날짜, 이 시간대에 올라온 것처럼 써라.\n'
+    +'다른 날짜·구간 밖 이야기는 쓰지 마라.\n'
+    +'각 항목에 "time": "HH:MM" 을 넣어라. '+lo+' 이상, '+hi+' 미만. 구간 밖은 넣지 마라.\n'
+    +'글마다 시각을 다르게 흩어라. 제목·본문에 시계 숫자를 박지 말고 생활의 결로 보여라.';
 
   const imgField=withImg?'\n      "image": "텀블러만 놓인 빈 자리 사진",':'';
   const imgRule=withImg
@@ -2303,7 +2325,7 @@ function buildAll(){
     .split('{할일}').join(jobs.join('\n'));
   if(S.gen.indexOf(when)<0) S.gen=whenBlock+'\n\n'+S.gen;
   if(evBlock && S.gen.indexOf('지정 사건')<0) S.gen=S.gen+'\n\n'+evBlock;
-  S.fold=S.fold||{}; S.fold.out=1; S.fold.grok=1;
+  S.fold=S.fold||{}; S.fold.out=1;
   render();
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
 }
@@ -2932,9 +2954,15 @@ function vMore(){
 function vLab(){
   const peopleN=DB.people.length;
   const n=+S.g.n||0, qn=+S.g.qn||0, mn=+S.g.mn||0;
-  const make=`<div class="row"><div class="k">지금 캠퍼스 시각
-        <small>${esc(clockStamp())} · ${esc(todNow()[3])}</small></div></div>
-      <div class="note" style="padding-top:0">프롬프트는 오늘 하루분입니다. 글마다 업로드 시각(time)이 들어갑니다.</div>
+  const make=`${slider('yy',S.g.yy,'연도','글이 올라온 해')}
+      ${slider('mm',S.g.mm,'월','1~12월')}
+      ${slider('dd',S.g.dd||'1','일','그달의 날짜')}
+      <div class="row"><div class="k">시간 구간<small>하루를 네 번으로 나눠 뽑을 때 씁니다</small></div></div>
+      ${slotHTML()}
+      ${slider('h0',S.g.h0||'0','시작 시각','이 시부터')}
+      ${slider('h1',S.g.h1||'6','끝 시각','이 시 직전까지')}
+      ${slider('timeScale',DB.cfg.timeScale,'캠퍼스 시간 속도','현실보다 빨리 흐르는 사이트 안 시계')}
+      <div class="note" style="padding-top:0">프롬프트 첫 줄: ${esc(rangeStamp())} 글. 구체적인 시각은 적지 않습니다.</div>
       ${slider('n',S.g.n,'게시글 개수','한 번에 만들 글 수. 0이면 안 만듦')}
       ${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수. 0이면 안 만듦')}
       ${slider('mn',S.g.mn,'물품 개수','한 번에 만들 거래 글 수. 0이면 안 만듦')}
@@ -2978,22 +3006,11 @@ function vLab(){
   const out=S.gen?`<div class="fld">
       <textarea class="ta" id="genOut" style="min-height:160px" readonly>${esc(S.gen)}</textarea>
       <button class="btn" data-act="copy">프롬프트 복사</button></div>`:'';
-  const grok=`<div class="note">그록 채팅은 이 사이트 안에 끼워 넣을 수 없습니다. 옆 창으로 연 뒤, 확장 프로그램으로 <b>이 채팅에서 새로 나온 글만</b> 가져오세요. 제목이 같은 글은 건너뜁니다.</div>
-      <div class="fld">
-        <button class="btn" data-act="open-grok">${S.gen?'프롬프트 복사하고 그록 열기':'그록 창 열기'}</button>
-        <a class="btn sub" href="/campustime-grok-ext.zip" download="campustime-grok-ext.zip" style="margin-top:8px;text-align:center;text-decoration:none">확장 프로그램 받기</a>
-      </div>
-      <div class="note">받은 압축을 풀고, 브라우저 확장 프로그램 페이지에서 개발자 모드를 켠 다음 <b>압축 해제된 확장 프로그램을 로드</b>하세요. 그록 탭에서 아이콘을 누르면 됩니다.</div>
-      <div class="fld"><label>그록이 준 내용 (직접 붙여넣기)</label>
-        <textarea class="ta" id="gpaste" style="min-height:140px" placeholder='그록 출력을 그대로 붙여넣기'>${esc(S.gpaste||'')}</textarea>
-        <button class="btn" data-act="add-gpaste">게시판에 넣기</button>
-      </div>`;
   return `<div class="pad">
-    ${foldCard('make', '한 번에 만들기', weekLabel()+' · 글 '+n+' · 투표 '+qn+' · 물품 '+mn,
-      `<div class="note">게시글·물품·투표를 한 프롬프트로 만듭니다. 개수를 0으로 두면 그 종류는 비웁니다. 속도는 창고에서 조절합니다.</div>${make}`, true)}
-    ${foldCard('grok', '그록', '옆 창 · 결과 붙여넣기', grok, true)}
+    ${foldCard('make', '한 번에 만들기', rangeStamp()+' · 글 '+n+' · 투표 '+qn+' · 물품 '+mn,
+      `<div class="note">하루치를 네 구간으로 나눠 만듭니다. 개수를 0으로 두면 그 종류는 비웁니다.</div>${make}`, true)}
     ${foldCard('tpl', '기본 프롬프트', (DB.atpl||DB.ptpl?'수정됨':'원문 고치기'), edit, false)}
-    ${S.gen?foldCard('out', '만든 프롬프트', '복사해서 그록에 붙여넣기', out, true):''}
+    ${S.gen?foldCard('out', '만든 프롬프트', '복사해서 붙여넣기', out, true):''}
   </div>`;
 }
 function vStock(){
@@ -3244,13 +3261,6 @@ function buildPrompt(){
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
 }
 function copyPrompt(){ copyText(S.gen,'genOut'); }
-function openGrok(){
-  if(S.gen && navigator.clipboard && navigator.clipboard.writeText)
-    navigator.clipboard.writeText(S.gen).catch(()=>{});
-  const w=window.open('https://grok.com','campustime-grok','popup=yes,width=440,height=800');
-  if(!w) toast('팝업이 막혔습니다. 브라우저에서 허용해 주세요');
-  else toast(S.gen?'프롬프트 복사됨 · 그록 창에 붙여넣으세요':'그록 창을 열었습니다');
-}
 function copyText(t,elId){
   if(!t) return;
   if(navigator.clipboard&&navigator.clipboard.writeText){
@@ -3272,7 +3282,7 @@ function back(){
 
 document.addEventListener('click',e=>{
   if(!DB) return;
-  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat]');
+  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot]');
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
@@ -3289,6 +3299,12 @@ document.addEventListener('click',e=>{
   if(d.mkcat){
     S.mkCat=d.mkcat==='*'?'':d.mkcat;
     return render();
+  }
+  if(d.slot!=null && d.slot!==''){
+    const slots=[[0,6],[6,12],[12,18],[18,24]];
+    const s=slots[+d.slot];
+    if(s){ S.g.h0=String(s[0]); S.g.h1=String(s[1]); render(); }
+    return;
   }
   if(d.item){
     const raw=d.item;
@@ -3404,11 +3420,6 @@ document.addEventListener('click',e=>{
       const el=$('#paste'); const v=el?el.value:'';
       if(!v.trim()) return toast('붙여넣은 내용이 없습니다');
       S.pasted=''; addFeed(v,'붙여넣기'); break; }
-    case 'add-gpaste': {
-      const el=$('#gpaste'); const v=el?el.value:(S.gpaste||'');
-      if(!String(v).trim()) return toast('붙여넣은 내용이 없습니다');
-      S.gpaste=''; addFeed(v,'그록'); break; }
-    case 'open-grok': openGrok(); break;
     case 'gen':
     case 'gen-poll':
     case 'gen-market': buildAll(); break;
@@ -3499,7 +3510,6 @@ function keepInput(e){
   else if(id==='mtplBox') S.mtplDraft=e.target.value;
   else if(id==='atplBox') S.atplDraft=e.target.value;
   else if(id==='evBox') S.g.ev=e.target.value;
-  else if(id==='gpaste') S.gpaste=e.target.value;
   else if(id==='mkPrice') S.mkPrice=e.target.value;
   else if(id==='ppaste') S.ppaste=e.target.value;
   else if(GMAP[id]) S.g[GMAP[id]]=e.target.value;
