@@ -160,7 +160,13 @@
     outline:none;background:#fff;font-size:16px}
   .src-item{display:flex;gap:10px;padding:11px 14px;border-top:1px solid var(--line);align-items:center}
   .src-item .n{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .src-item .c{font-size:11.5px;color:var(--faint);flex:0 0 auto}
+  .src-item .c{font-size:11.5px;color:var(--faint);flex-shrink:0}
+  .tl-row{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border-bottom:1px solid var(--line);background:none;text-align:left}
+  .tl-row.on{background:var(--chip)}
+  .tl-row .tt{flex:1;font-size:13.5px;font-weight:750}
+  .tl-row .st{font-size:11px;color:var(--faint);flex-shrink:0}
+  .tl-row.on .st{color:var(--accent);font-weight:700}
+  .tl-row .x{border:0;background:none;color:var(--faint);font-size:16px;padding:0 4px}
 
   .pp{border-top:1px solid var(--line);background:var(--card)}
   .pp-av{width:44px;height:44px;border-radius:13px;background:var(--red-dim);color:var(--red);
@@ -958,7 +964,7 @@ function fresh(){
     cfg:Object.assign({},CFG_DEF), tpl:null, ptpl:null, qtpl:null, mtpl:null, atpl:null,
     market, listed:[], owned:[], morders:[], credit:10000, trades:0, bestRoi:0, achs:[], marks:{},
     polls:DEFAULT_POLLS.map(x=>x), prevealed:0, plastAt:0,
-    vault:[], vrev:0, pvault:[], pvrev:0,
+    vault:[], vrev:0, pvault:[], pvrev:0, tl:[],
     people:[
       {id:1,name:'김대현 교수',role:'전공 교수',
        age:'40대 후반',build:'180cm / 68kg',shape:'마르고 어깨가 좁다',
@@ -1024,7 +1030,7 @@ function normalize(d){
   d.cfg=Object.assign({},CFG_DEF,d.cfg||{});
   ['dm','convos','aff','dmq','dmNextAt','dtpl'].forEach(k=>{ delete d[k]; });
   d.polls=d.polls||[]; d.prevealed=d.prevealed||0; d.plastAt=d.plastAt||0;
-  d.vault=Array.isArray(d.vault)?d.vault:[];
+  d.tl=Array.isArray(d.tl)?d.tl:[];
   d.pvault=Array.isArray(d.pvault)?d.pvault:[];
   d.vrev=typeof d.vrev==='number'?d.vrev:0;
   d.pvrev=typeof d.pvrev==='number'?d.pvrev:0;
@@ -1084,7 +1090,7 @@ function exportAll(){
     tpl:DB.tpl, ptpl:DB.ptpl, qtpl:DB.qtpl, mtpl:DB.mtpl, atpl:DB.atpl, polls:DB.polls, posts:DB.posts, revealed:DB.revealed,
     lastPostAt:DB.lastPostAt, clock:DB.clock, pending:DB.pending, nextId:DB.nextId,
     prevealed:DB.prevealed, plastAt:DB.plastAt,
-    vault:DB.vault||[], vrev:DB.vrev||0, pvault:DB.pvault||[], pvrev:DB.pvrev||0,
+    vault:DB.vault||[], vrev:DB.vrev||0, pvault:DB.pvault||[], pvrev:DB.pvrev||0, tl:DB.tl||[],
     market:DB.market, listed:DB.listed, owned:DB.owned, morders:DB.morders,
     credit:DB.credit, trades:DB.trades, bestRoi:DB.bestRoi, achs:DB.achs||[], marks:DB.marks||{}});
 }
@@ -1107,7 +1113,7 @@ function restoreBackup(text){
   if(!o||!o.__campustime) return toast('캠퍼스타임 백업 파일이 아닙니다');
   const cur=DB;
   DB=fresh();
-  ['people','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','atpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
+  ['people','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','atpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault','tl'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
   ['revealed','lastPostAt','clock','nextId','prevealed','plastAt','credit','trades','bestRoi','vrev','pvrev'].forEach(k=>{ if(typeof o[k]==='number') DB[k]=o[k]; });
   if(typeof o.prevealed!=='number')
     DB.prevealed=Math.min(DB.polls.length,(DB.posts||[]).filter(p=>p.pk==='poll').length);
@@ -1784,6 +1790,7 @@ function addFeed(text,name){
   DB.sources.push({name:(name||'붙여넣기')+(newPolls.length&&!newPosts.length?' (투표)':madded?' (물품)':''),
     count:newPosts.length+newPolls.length+madded});
   if(madded) refreshQuotes();
+  markTlFromItems([].concat(newPosts, newPolls));
   save(); tick(); render();
   const skip=skipP+skipQ;
   toast([newPosts.length?`글 ${newPosts.length}개`:'',newPolls.length?`투표 ${newPolls.length}개`:'',
@@ -2249,13 +2256,104 @@ function weekLabel(){
   return rangeStamp();
 }
 function hourBand(){
-  const y=Math.max(2026, Math.min(2036, +S.g.yy||2026));
+  const y=Math.max(2026, Math.min(2100, +S.g.yy||campusYear()));
   const m=Math.max(1, Math.min(12, +S.g.mm||1));
   const d=Math.max(1, Math.min(31, +S.g.dd||1));
   let a=Math.max(0, Math.min(23, +S.g.h0||0));
   let b=Math.max(1, Math.min(24, +S.g.h1||6));
   if(b<=a) b=Math.min(24,a+6);
   return {y,m,d,a,b};
+}
+function campusYear(){
+  return worldDate().getFullYear();
+}
+const SLOTS=[[0,6],[6,12],[12,18],[18,24]];
+function slotOfHour(h){
+  return SLOTS.find(s=>h>=s[0]&&h<s[1])||SLOTS[0];
+}
+function tlEq(x,t){ return x.y===t.y&&x.m===t.m&&x.d===t.d&&x.a===t.a&&x.b===t.b; }
+function sortTl(){
+  DB.tl.sort((a,b)=> (a.y-b.y)||(a.m-b.m)||(a.d-b.d)||(a.a-b.a));
+}
+function fillDay(y,m,d){
+  DB.tl=DB.tl||[];
+  SLOTS.forEach(s=>{
+    if(!DB.tl.some(x=>x.y===y&&x.m===m&&x.d===d&&x.a===s[0]&&x.b===s[1]))
+      DB.tl.push({id:uid(), y, m, d, a:s[0], b:s[1], st:'wait'});
+  });
+  sortTl();
+}
+function ensureTl(){
+  DB.tl=DB.tl||[];
+  if(!DB.tl.length){
+    const w=worldDate();
+    fillDay(w.getFullYear(), w.getMonth()+1, w.getDate());
+  }
+}
+function pickTl(x){
+  if(!x) return;
+  S.g.yy=String(x.y); S.g.mm=String(x.m); S.g.dd=String(x.d);
+  S.g.h0=String(x.a); S.g.h1=String(x.b);
+}
+function pickNextTl(){
+  ensureTl(); sortTl();
+  const n=DB.tl.find(x=>x.st!=='in');
+  pickTl(n||DB.tl[DB.tl.length-1]);
+}
+function markTl(st){
+  ensureTl();
+  const t=hourBand();
+  let x=DB.tl.find(z=>tlEq(z,t));
+  if(!x){ x={id:uid(), y:t.y, m:t.m, d:t.d, a:t.a, b:t.b, st:'wait'}; DB.tl.push(x); }
+  if(st==='in' || (st==='made' && x.st!=='in')) x.st=st;
+  fillDay(x.y, x.m, x.d);
+  if(st==='in' && SLOTS.every(s=>DB.tl.some(z=>z.y===x.y&&z.m===x.m&&z.d===x.d&&z.a===s[0]&&z.st==='in'))){
+    const dt=new Date(x.y, x.m-1, x.d+1);
+    fillDay(dt.getFullYear(), dt.getMonth()+1, dt.getDate());
+  }
+  sortTl();
+}
+function markTlFromItems(items){
+  (items||[]).forEach(f=>{
+    const at=dueOf(f);
+    if(at==null) return;
+    const dt=new Date(WORLD0+at);
+    const s=slotOfHour(dt.getHours());
+    const t={y:dt.getFullYear(), m:dt.getMonth()+1, d:dt.getDate(), a:s[0], b:s[1]};
+    S.g.yy=String(t.y); S.g.mm=String(t.m); S.g.dd=String(t.d); S.g.h0=String(t.a); S.g.h1=String(t.b);
+    markTl('in');
+  });
+  pickNextTl();
+}
+function tlAdd(){
+  ensureTl();
+  const t=hourBand();
+  t.y=campusYear();
+  if(DB.tl.some(x=>tlEq(x,t))) return toast('이미 있는 구간입니다');
+  DB.tl.push({id:uid(), y:t.y, m:t.m, d:t.d, a:t.a, b:t.b, st:'wait'});
+  sortTl(); pickTl(t.y?DB.tl.find(x=>tlEq(x,t)):null);
+  save(); render();
+  toast(t.m+'월 '+t.d+'일 '+t.a+'시~'+t.b+'시 를 넣었습니다');
+}
+function tlHTML(){
+  ensureTl();
+  const t=hourBand();
+  const lab={wait:'대기', made:'프롬프트', in:'저장됨'};
+  const next=DB.tl.find(x=>x.st!=='in');
+  return `<div class="note">연도는 캠퍼스 시계가 정합니다 (${campusYear()}년). 저장된 다음 구간이 프롬프트가 됩니다. 예외는 아래에서 직접 넣습니다.</div>
+      ${(DB.tl||[]).map(x=>{
+        const on=tlEq(x,t);
+        const st=next&&x.id===next.id&&x.st!=='in'?'다음':(lab[x.st]||'대기');
+        return `<button type="button" class="tl-row ${on?'on':''}" data-tl="${x.id}">
+          <span class="tt">${x.m}월 ${x.d}일 ${x.a}시~${x.b}시</span>
+          <span class="st">${st}</span></button>`;
+      }).join('')}
+      <div class="sec" style="padding-top:10px">직접 넣기</div>
+      <div class="note" style="padding-top:0">없는 날짜·구간만 넣습니다. 연도는 ${campusYear()}년입니다.</div>
+      ${slider('mm',S.g.mm,'월','')}
+      ${slider('dd',S.g.dd||'1','일','')}
+      ${slotHTML()}
+      <div class="fld"><button class="btn sub" data-act="tl-add">이 구간을 타임라인에 넣기</button></div>`;
 }
 function rangeStamp(){
   const t=hourBand();
@@ -2367,7 +2465,8 @@ function buildAll(){
     .split('{할일}').join(jobs.join('\n'));
   if(S.gen.indexOf(when)<0) S.gen=whenBlock+'\n\n'+S.gen;
   if(evBlock && S.gen.indexOf('지정 사건')<0) S.gen=S.gen+'\n\n'+evBlock;
-  S.fold=S.fold||{}; S.fold.out=1;
+  markTl('made');
+  S.fold=S.fold||{}; S.fold.out=1; S.fold.make=1; S.fold.line=1;
   render();
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
 }
@@ -2981,7 +3080,7 @@ function vMore(){
   return `<div class="pad gate">
     <button class="gate-btn" data-act="go-lab">
       <div class="gate-k">기계실</div>
-      <div class="gate-d">기간 · 분량 · 소재 · 프롬프트</div>
+      <div class="gate-d">타임라인 · 분량 · 프롬프트</div>
     </button>
     <button class="gate-btn" data-act="go-stock">
       <div class="gate-k">창고</div>
@@ -2996,14 +3095,7 @@ function vMore(){
 function vLab(){
   const peopleN=DB.people.length;
   const n=+S.g.n||0, qn=+S.g.qn||0, mn=+S.g.mn||0;
-  const when=`<div class="note">하루치를 네 구간으로 나눠 뽑습니다. 첫 줄은 날짜와 구간만 들어갑니다.</div>
-      ${slider('yy',S.g.yy,'연도','글이 올라온 해')}
-      ${slider('mm',S.g.mm,'월','1~12월')}
-      ${slider('dd',S.g.dd||'1','일','그달의 날짜')}
-      <div class="row"><div class="k">시간 구간<small>눌러서 고르거나 아래에서 직접 조절</small></div></div>
-      ${slotHTML()}
-      ${slider('h0',S.g.h0||'0','시작 시각','이 시부터')}
-      ${slider('h1',S.g.h1||'6','끝 시각','이 시 직전까지')}`;
+  ensureTl();
   const qty=`<div class="note">개수를 0으로 두면 그 종류는 만들지 않습니다.</div>
       ${slider('n',S.g.n,'게시글 개수','한 번에 만들 글 수')}
       ${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수')}
@@ -3050,7 +3142,7 @@ function vLab(){
         <button class="btn sub" data-act="ptpl-reset">기본값으로 되돌리기</button>`:''}</div>`;
   return `<div class="pad">
     <div class="note" style="padding:4px 2px 10px">기계실 · 글을 만드는 곳. 시계와 저장은 창고입니다.</div>
-    ${foldCard('when', '기간', rangeStamp(), when, true)}
+    ${foldCard('line', '타임라인', rangeStamp(), tlHTML(), true)}
     ${foldCard('qty', '분량', '글 '+n+' · 투표 '+qn+' · 물품 '+mn, qty, true)}
     ${foldCard('topic', '소재', S.g.arc!=='0'?'떡밥 켜짐':'힌트 · 떡밥 · 사건', topic, false)}
     ${foldCard('make', '만들기', S.gen?'복사해서 붙여넣기':'프롬프트 출력', make, true)}
@@ -3326,7 +3418,7 @@ function back(){
 
 document.addEventListener('click',e=>{
   if(!DB) return;
-  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot]');
+  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl]');
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
@@ -3348,6 +3440,12 @@ document.addEventListener('click',e=>{
     const slots=[[0,6],[6,12],[12,18],[18,24]];
     const s=slots[+d.slot];
     if(s){ S.g.h0=String(s[0]); S.g.h1=String(s[1]); render(); }
+    return;
+  }
+  if(d.tl){
+    ensureTl();
+    const x=DB.tl.find(z=>String(z.id)===String(d.tl));
+    if(x){ pickTl(x); render(); }
     return;
   }
   if(d.item){
@@ -3405,7 +3503,8 @@ document.addEventListener('click',e=>{
   switch(d.act){
     case 'back': back(); break;
     case 'go-settings': nav('more'); break;
-    case 'go-lab': nav('lab'); break;
+    case 'go-lab': pickNextTl(); nav('lab'); break;
+    case 'tl-add': tlAdd(); break;
     case 'go-stock': nav('stock'); break;
     case 'enter': enterCampus(); break;
     case 'leave': leaveCampus(); break;
