@@ -261,22 +261,6 @@
     background:var(--card);padding:12px 14px;border-bottom:1px solid var(--line)}
   .cr-bar .k{font-size:12.5px;color:var(--sub);font-weight:700}
   .cr-bar .v{font-size:16px;font-weight:800}
-  .ach-row{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-top:1px solid var(--line)}
-  .ach-row:first-of-type{border-top:none}
-  .ach-row.off{opacity:.5}
-  .ach-n{font-size:14px;font-weight:700;letter-spacing:-.02em}
-  .ach-h{display:block;font-size:12px;color:var(--faint);margin-top:3px;line-height:1.4}
-  .tier{flex:0 0 auto;font-size:10px;font-weight:800;padding:3px 6px;border-radius:5px;margin-top:1px}
-  .t0{color:#8B5A2B;background:#F3E4D1}
-  .t1{color:#5B6570;background:#E7ECF0}
-  .t2{color:#9A7B12;background:#F7E7A8}
-  .t3{color:#2F7A7A;background:#D7EFEF}
-  .t4{color:#3D5CCC;background:#DCE4FF}
-  .t5{color:#A13D7A;background:#F5D5E8}
-  .t6{color:#C44738;background:#F8D4CE}
-  .t7{color:#8A6A00;background:#FFE58A}
-  .ach-pop{text-align:center;padding-top:6px}
-  .ach-pop .tier{display:inline-block;margin:0 0 12px}
   /* 투표 */
   .vbadge{display:inline-block;font-size:10px;font-weight:800;color:var(--red);background:var(--red-dim);
     border-radius:5px;padding:2px 6px;margin-right:6px;vertical-align:2px}
@@ -2435,143 +2419,8 @@ function buildMarket(){
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
 }
 
-const ACH_TIER=['브론즈','실버','골드','플래티넘','다이아','마스터','그랜드마스터','챌린저'];
-const ACHS=[
-  {id:'nod', t:0, name:'고개만 까딱', hint:'글 하나에 공감을 눌렀다', test:s=>s.likes>=1},
-  {id:'anon', t:0, name:'익명입니다만', hint:'댓글을 하나 남겼다', test:s=>s.comments>=1},
-  {id:'hand', t:0, name:'손 들어볼게요', hint:'투표에 한 표를 던졌다', test:s=>s.votes>=1},
-  {id:'clip', t:0, name:'나중에 볼게요', hint:'글을 하나 스크랩했다', test:s=>s.scraps>=1},
-  {id:'night', t:0, name:'밤샘 눈팅', hint:'밤이나 새벽에 한 번 반응했다', test:s=>mk(s,'night')},
-  {id:'look', t:0, name:'장터 기웃', hint:'거래 글을 열었다', test:s=>mk(s,'look')},
-  {id:'pick', t:1, name:'고른 말이 곧 나', hint:'선택지로 말을 골랐다', test:s=>s.picks>=1},
-  {id:'face', t:1, name:'얼굴은 알고', hint:'인물 한 명에게 관심을 보였다', test:s=>s.iN>=1},
-  {id:'bag', t:1, name:'에코백에 넣음', hint:'장터에서 물건을 샀다', test:s=>s.trades>=1||s.owned>=1},
-  {id:'read', t:1, name:'한 바퀴 돌았음', hint:'글이 다섯 개 올라온 걸 봤다', test:s=>s.revealed>=5},
-  {id:'typed', t:1, name:'직접 쳤다', hint:'선택지 말고 댓글을 직접 썼다', test:s=>mk(s,'typed')},
-  {id:'img', t:1, name:'사진부터 봄', hint:'사진 있는 글에 공감했다', test:s=>mk(s,'imglike')},
-  {id:'search', t:1, name:'검색창 사람', hint:'실시간 인기 검색어를 눌렀다', test:s=>mk(s,'search')},
-  {id:'hot', t:1, name:'인기부터 본다', hint:'인기 탭을 열었다', test:s=>mk(s,'tabh')},
-  {id:'skip', t:1, name:'참을성 없음', hint:'다음 글을 지금 공개했다', test:s=>mk(s,'skip')},
-  {id:'cloth', t:1, name:'옷장 정리', hint:'특성이 옷인 물건을 샀다', test:s=>tr(s,'옷')},
-  {id:'cheap', t:1, name:'오백원짜리', hint:'기준가 600 이하 물건을 샀다', test:s=>mk(s,'cheap')},
-  {id:'fan', t:2, name:'그 사람 글만', hint:'한 인물 관심도가 5가 됐다', test:s=>s.iMax>=5},
-  {id:'heart', t:2, name:'공감 중독', hint:'공감한 글이 열 개다', test:s=>s.likes>=10},
-  {id:'talk', t:2, name:'댓글 알바', hint:'내 댓글이 열 개다', test:s=>s.comments>=10},
-  {id:'green', t:2, name:'조금 남겼다', hint:'산값보다 비싸게 팔았다', test:s=>s.roi>0},
-  {id:'vulgar', t:2, name:'취향이 그쯤', hint:'천박함 특성 물건을 샀다', test:s=>tr(s,'천박함')},
-  {id:'flex', t:2, name:'허세템', hint:'허세 특성 물건을 샀다', test:s=>tr(s,'허세')},
-  {id:'sad', t:2, name:'애잔한 거 삼', hint:'애잔함 특성 물건을 샀다', test:s=>tr(s,'애잔함')},
-  {id:'gadget', t:2, name:'충전기는 기본', hint:'전자기기 특성 물건을 샀다', test:s=>tr(s,'전자기기')},
-  {id:'book', t:2, name:'전공서적', hint:'교재 특성 물건을 샀다', test:s=>tr(s,'교재')},
-  {id:'pull', t:2, name:'당겨서 확인', hint:'새로고침으로 글을 불러왔다', test:s=>mk(s,'pull')},
-  {id:'both', t:2, name:'공감도 스크랩도', hint:'같은 글에 공감과 스크랩을 다 했다', test:s=>mk(s,'both')},
-  {id:'cast', t:3, name:'과 사람들', hint:'등록한 인물 모두에게 관심을 보였다', test:s=>s.allCast},
-  {id:'polls', t:3, name:'밸런스 폐인', hint:'투표 다섯 개에 참여했다', test:s=>s.votes>=5},
-  {id:'shop', t:3, name:'장터 단골', hint:'사고팔기를 다섯 번 했다', test:s=>s.trades>=5},
-  {id:'hold', t:3, name:'양손 가득', hint:'물건을 두 개 동시에 들고 있다', test:s=>s.owned>=2},
-  {id:'cute', t:3, name:'귀여운 거', hint:'귀여움 특성 물건을 샀다', test:s=>tr(s,'귀여움')},
-  {id:'old', t:3, name:'낡은 거 삼', hint:'낡음 특성 물건을 샀다', test:s=>tr(s,'낡음')},
-  {id:'shame', t:3, name:'민망한 거', hint:'민망함 특성 물건을 샀다', test:s=>tr(s,'민망함')},
-  {id:'lux', t:3, name:'고급져 보이는', hint:'고급짐 특성 물건을 샀다', test:s=>tr(s,'고급짐')},
-  {id:'rarebuy', t:3, name:'겹쳐 입은 맛', hint:'특성이 세 개 이상인 물건을 샀다', test:s=>mk(s,'traits3')},
-  {id:'instant', t:3, name:'급매', hint:'즉시 체결로 거래했다', test:s=>mk(s,'instant')},
-  {id:'allpick', t:3, name:'할 말 다 함', hint:'한 글의 선택지를 모두 골랐다', test:s=>mk(s,'allpick')},
-  {id:'pulse', t:4, name:'여론을 읽음', hint:'인물 관심도 합이 15이다', test:s=>s.iSum>=15},
-  {id:'flood', t:4, name:'익명 도배', hint:'내 댓글이 스물다섯 개다', test:s=>s.comments>=25},
-  {id:'roi20', t:4, name:'이십 퍼센트', hint:'한 물건에서 20%를 남겼다', test:s=>s.roi>=0.2},
-  {id:'wallet', t:4, name:'여유 자금', hint:'거래 세 번 뒤 크레딧이 12,000을 넘었다', test:s=>s.trades>=3&&s.credit>=12000},
-  {id:'kinds2', t:4, name:'종류가 다르다', hint:'서로 다른 종류 물건을 두 개 샀다', test:s=>s.kinds>=2},
-  {id:'vibes2', t:4, name:'기운이 섞였다', hint:'서로 다른 기운 물건을 두 개 샀다', test:s=>s.vibes>=2},
-  {id:'loss', t:4, name:'손절', hint:'산값보다 싸게 팔았다', test:s=>mk(s,'loss')},
-  {id:'unfav', t:4, name:'불리한 호가', hint:'불리한 가격으로 주문을 걸었다', test:s=>mk(s,'unfav')},
-  {id:'frombroke', t:4, name:'텅장 쇼핑', hint:'바닥일 때 물건을 샀다', test:s=>mk(s,'frombroke')},
-  {id:'arclike', t:4, name:'떡밥 공감', hint:'이어지는 이야기 글에 공감했다', test:s=>mk(s,'arclike')},
-  {id:'backup', t:4, name:'백업 파일', hint:'백업 파일을 저장했다', test:s=>mk(s,'backup')},
-  {id:'dealer', t:5, name:'거래의 달인', hint:'사고팔기를 열두 번 했다', test:s=>s.trades>=12},
-  {id:'roi50', t:5, name:'반을 남겼다', hint:'한 물건에서 50%를 남겼다', test:s=>s.roi>=0.5},
-  {id:'kinds3', t:5, name:'잡화점', hint:'종류가 다른 물건 세 개를 샀다', test:s=>s.kinds>=3},
-  {id:'cloth2', t:5, name:'옷 두 벌', hint:'옷 특성 물건을 두 개 샀다', test:s=>tr(s,'옷')>=2},
-  {id:'hopeless', t:5, name:'안 잡힐 호가', hint:'사실상 안 잡히는 가격을 불렀다', test:s=>mk(s,'hopeless')},
-  {id:'person', t:5, name:'명단 추가', hint:'인물을 새로 등록했다', test:s=>mk(s,'person')},
-  {id:'typed5', t:5, name:'타자 알바', hint:'직접 친 댓글이 다섯 개다', test:s=>mk(s,'typed')>=5},
-  {id:'double', t:6, name:'두 배', hint:'한 물건에서 값을 두 배로 받았다', test:s=>s.roi>=1},
-  {id:'museum', t:6, name:'수집가', hint:'종류가 다른 물건 다섯 개를 샀다', test:s=>s.kinds>=5},
-  {id:'nightbuy', t:6, name:'밤의 장터', hint:'밤에 물건을 샀다', test:s=>mk(s,'night')&&(s.trades>=1||s.owned>=1)},
-  {id:'closet', t:6, name:'옷이면서 천박함', hint:'옷과 천박함 물건을 둘 다 샀다', test:s=>tr(s,'옷')&&tr(s,'천박함')},
-  {id:'campus', t:7, name:'캠퍼스타임', hint:'댓글 30, 투표 8, 거래 10, 인물 전원 관심', test:s=>s.comments>=30&&s.votes>=8&&s.trades>=10&&s.allCast},
-  {id:'taste', t:7, name:'취향입니다', hint:'옷·천박함·허세를 전부 샀다', test:s=>tr(s,'옷')&&tr(s,'천박함')&&tr(s,'허세')}
-];
-function mk(s,k,n){ return (s.marks[k]||0)>=(n||1); }
-function tr(s,t){ return s.marks['tr:'+t]||0; }
-function achState(){
-  const posts=DB.posts||[], people=DB.people||[];
-  const m=buildMentions();
-  const marks=DB.marks||{};
-  let comments=0, picks=0, iMax=0, iSum=0, iN=0;
-  posts.forEach(p=>{
-    comments+=p.comments.filter(c=>c.by==='me').length;
-    picks+=(p.used||[]).length;
-  });
-  people.forEach(pr=>{
-    const v=m.interest[pr.id]||0;
-    if(v>0) iN++;
-    iSum+=v; if(v>iMax) iMax=v;
-  });
-  let kinds=0, vibes=0;
-  KIND.forEach(k=>{ if(marks['tr:'+k]) kinds++; });
-  VIBE.forEach(k=>{ if(marks['tr:'+k]) vibes++; });
-  return {
-    likes:posts.filter(p=>p.liked).length,
-    scraps:posts.filter(p=>p.scrapped).length,
-    comments, picks,
-    votes:posts.filter(p=>p.myVote!=null).length,
-    revealed:posts.length,
-    trades:DB.trades||0,
-    owned:(DB.owned||[]).length,
-    roi:DB.bestRoi||0,
-    credit:DB.credit||0,
-    iMax, iSum, iN, marks, kinds, vibes,
-    allCast:people.length>=3 && iN>=people.length
-  };
-}
-function showNextAch(){
-  if(S.sheet) return;
-  if(S.view==='lab'||S.view==='stock'||S.view==='more') return;
-  const ae=document.activeElement;
-  if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA')) return;
-  if(!(S.achQ||[]).length) return;
-  S.sheet={type:'ach', a:S.achQ.shift()};
-  render();
-}
-function checkAchs(){
-  if(!DB) return;
-  DB.achs=DB.achs||[];
-  const st=achState();
-  let n=0;
-  ACHS.forEach(a=>{
-    if(DB.achs.indexOf(a.id)>=0) return;
-    if(!a.test(st)) return;
-    DB.achs.push(a.id);
-    S.achQ=S.achQ||[]; S.achQ.push(a);
-    n++;
-  });
-  if(n){ save(); showNextAch(); }
-}
-function achListHTML(){
-  const have=new Set(DB.achs||[]);
-  const n=have.size;
-  return `<div class="card" style="margin-top:10px">
-    <div class="sec">도전과제 ${n} / ${ACHS.length}</div>
-    ${ACHS.map(a=>{
-      const on=have.has(a.id);
-      return `<div class="ach-row ${on?'':'off'}">
-        <span class="tier t${a.t}">${ACH_TIER[a.t]}</span>
-        <span><span class="ach-n">${on?esc(a.name):'???'}</span>
-          <span class="ach-h">${on?esc(a.hint):'???'}</span></span>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
+function checkAchs(){}
+function showNextAch(){}
 
 /* ===================== 렌더 ===================== */
 let lastView=null;
@@ -2704,7 +2553,6 @@ function vMine(){
       <div style="flex:1;border-left:1px solid var(--line)"><b style="display:block;font-size:18px;font-weight:800">${bag.length}</b>
         <span style="font-size:11.5px;color:var(--sub)">수집품</span></div>
     </div>
-    ${achListHTML()}
     <div class="card" style="margin-top:10px">
       <div class="sec">수집품 ${bag.length}개 · ${won(DB.credit)}</div>
       ${bag.length?bag.map(x=>`<button class="mrow" data-item="${x.it.id}">
@@ -3148,7 +2996,7 @@ function vStock(){
       <div class="note" style="padding:0 14px 14px">브라우저가 공간이 부족할 때 데이터를 지우지 않도록 요청합니다.
         허용 여부는 브라우저가 정합니다.</div>`;
   const wipe=`<div class="note">기본으로 들어 있는 글과 투표만 게시판에서 빼고 처음부터 다시 올라오게 합니다.
-        그 글에 단 댓글·공감도 함께 지워집니다. 붙여넣은 글, 인물, 시장, 업적은 그대로입니다.</div>
+        그 글에 단 댓글·공감도 함께 지워집니다. 붙여넣은 글, 인물, 시장은 그대로입니다.</div>
       <div class="fld"><button class="btn sub" data-act="reset-sample">샘플 게시글 다시 넣기</button></div>
       <div class="note">쌓아둔 글, 공개된 게시글, 내가 단 댓글이 모두 지워지고 처음 상태로 돌아갑니다.</div>
       <div class="fld"><button class="btn danger" data-act="reset">데이터 초기화</button></div>`;
@@ -3214,17 +3062,9 @@ function renderSheet(){
     inner=`<h3>샘플 글을 다시 넣을까요?</h3>
       <div style="font-size:13.5px;color:var(--sub);line-height:1.6;margin-bottom:14px">
         기본 글 ${DEFAULT_FEED.length}개와 투표 ${DEFAULT_POLLS.length}개가 게시판에서 빠지고 처음부터 다시 올라옵니다.
-        그 글에 단 댓글·공감도 지워집니다. 붙여넣은 글, 인물, 시장, 업적은 그대로입니다.</div>
+        그 글에 단 댓글·공감도 지워집니다. 붙여넣은 글, 인물, 시장은 그대로입니다.</div>
       <button class="btn" data-act="reset-sample-yes">다시 넣기</button>
       <button class="btn sub" data-act="close-sheet">취소</button>`;
-  }else if(S.sheet.type==='ach'){
-    const a=S.sheet.a||{};
-    inner=`<div class="ach-pop">
-      <span class="tier t${a.t||0}">${ACH_TIER[a.t||0]}</span>
-      <h3>${esc(a.name||'도전과제')}</h3>
-      <div style="font-size:13.5px;color:var(--sub);line-height:1.6;margin:8px 0 16px">${esc(a.hint||'')}</div>
-      <button class="btn" data-act="close-sheet">확인</button>
-    </div>`;
   }
   const el=document.createElement('div');
   el.className='sheet-bg'; el.innerHTML=`<div class="sheet">${inner}</div>`;
