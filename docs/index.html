@@ -147,6 +147,16 @@
   .seg button{border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12.5px;
     color:var(--sub);font-weight:600;background:#fff}
   .seg button.on{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+  .mine-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line);padding:0 6px}
+  .mine-tabs button{flex:1;padding:13px 4px 11px;font-size:13.5px;font-weight:750;color:var(--faint);
+    border-bottom:2px solid transparent}
+  .mine-tabs button.on{color:var(--ink);border-bottom-color:var(--red)}
+  .me-hero{display:flex;gap:14px;align-items:center;padding:16px 14px 8px}
+  .me-av{width:72px;height:72px;border-radius:22px;background:var(--red-dim);color:var(--red);
+    display:grid;place-items:center;font-size:26px;font-weight:800;overflow:hidden;flex:0 0 auto}
+  .me-av img{width:100%;height:100%;object-fit:cover;display:block}
+  .me-hero .who{font-size:18px;font-weight:800;letter-spacing:-.03em}
+  .me-hero .sub{font-size:12.5px;color:var(--sub);margin-top:4px;line-height:1.45}
   .ta{width:100%;min-height:120px;border:1px solid var(--line);border-radius:10px;padding:11px;
     font-size:16px;line-height:1.5;outline:none;resize:vertical;background:#fff;
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
@@ -962,7 +972,7 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
   qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,atplEdit:false,atplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
   backupText:'',ppaste:'',gpaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
   playing:false,cover:'in',
-  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,
+  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,mine:'me',photoFor:'',
   fold:{import:1,make:1},
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
@@ -979,7 +989,7 @@ function empty(){
     market:[], listed:[], owned:[], morders:[], credit:10000, trades:0, bestRoi:0, achs:[], marks:{},
     polls:[], prevealed:0, plastAt:0,
     vault:[], vrev:0, pvault:[], pvrev:0, tl:[], cal:[],
-    people:[]
+    people:[], me:{}
   };
 }
 function fresh(){
@@ -1002,6 +1012,7 @@ function fresh(){
        age:'대학원 2년차',build:'175cm / 80kg',shape:'다부지고 어깨가 넓다',
        memo:'과 사무실 상주. 후드티에 슬리퍼, 늘 커피를 들고 있다.\n무뚝뚝해 보이지만 챙겨준다. 서류 실수에는 엄격하다.\n오후 5시 넘으면 자리에 없다.'}
     ],
+    me:{}
   };
 }
 /* 저장: IndexedDB를 먼저 쓰고, 안 되면 localStorage로 물러난다.
@@ -1072,6 +1083,10 @@ function normalize(d){
     return {mid:+x, cost:0};
   }).filter(x=>x.mid);
   d.morders=Array.isArray(d.morders)?d.morders:[];
+  d.morders.forEach(o=>{
+    if(+o.due>1e12) o.due=(d.clock||0)+Math.max(0,+o.due-Date.now());
+  });
+  d.me=(d.me&&typeof d.me==='object'&&!Array.isArray(d.me))?d.me:{};
   if(typeof d.credit!=='number') d.credit=10000;
   if(typeof d.trades!=='number') d.trades=0;
   if(typeof d.bestRoi!=='number') d.bestRoi=0;
@@ -1112,7 +1127,7 @@ function loadAll(){
 }
 function exportAll(){
   return JSON.stringify({__campustime:3, at:new Date().toISOString(),
-    people:DB.people, feed:DB.feed, sources:DB.sources, cfg:DB.cfg,
+    people:DB.people, me:DB.me||{}, feed:DB.feed, sources:DB.sources, cfg:DB.cfg,
     tpl:DB.tpl, ptpl:DB.ptpl, qtpl:DB.qtpl, mtpl:DB.mtpl, atpl:DB.atpl, polls:DB.polls, posts:DB.posts, revealed:DB.revealed,
     lastPostAt:DB.lastPostAt, clock:DB.clock, pending:DB.pending, nextId:DB.nextId,
     prevealed:DB.prevealed, plastAt:DB.plastAt,
@@ -1139,7 +1154,7 @@ function restoreBackup(text){
   if(!o||!o.__campustime) return toast('캠퍼스타임 백업 파일이 아닙니다');
   const cur=DB;
   DB=fresh();
-  ['people','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','atpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault','tl','cal'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
+  ['people','me','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','atpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault','tl','cal'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
   ['revealed','lastPostAt','clock','nextId','prevealed','plastAt','credit','trades','bestRoi','vrev','pvrev'].forEach(k=>{ if(typeof o[k]==='number') DB[k]=o[k]; });
   if(typeof o.prevealed!=='number')
     DB.prevealed=Math.min(DB.polls.length,(DB.posts||[]).filter(p=>p.pk==='poll').length);
@@ -2013,15 +2028,20 @@ function waitLabel(ms){
   if(ms<=0) return '즉시';
   if(ms>=24*HOUR) return '사실상 안 잡힘';
   if(ms<MIN) return Math.max(1,Math.round(ms/1000))+'초';
-  if(ms<HOUR) return '최대 '+Math.round(ms/MIN)+'분';
-  return '최대 '+Math.round(ms/HOUR)+'시간';
+  if(ms<HOUR) return '캠퍼스 '+Math.round(ms/MIN)+'분';
+  return '캠퍼스 '+Math.round(ms/HOUR)+'시간';
+}
+function campusDue(due){
+  due=+due||0;
+  if(due>1e12) return (DB.clock||0)+Math.max(0, due-Date.now());
+  return due;
 }
 function leftLabel(due){
-  const ms=+due-Date.now();
+  const ms=campusDue(due)-(DB.clock||0);
   if(!(ms>0)) return '곧 체결';
   if(ms<MIN) return Math.max(1,Math.round(ms/1000))+'초 남음';
-  if(ms<HOUR) return Math.round(ms/MIN)+'분 남음';
-  return Math.round(ms/HOUR)+'시간 남음';
+  if(ms<HOUR) return '캠퍼스 '+Math.round(ms/MIN)+'분 남음';
+  return '캠퍼스 '+Math.round(ms/HOUR)+'시간 남음';
 }
 function isBroke(){
   return (DB.credit||0)<2000 && !(DB.owned||[]).length
@@ -2044,10 +2064,9 @@ function parseMkPrice(q){
 }
 function settleOrders(){
   if(!DB||!(DB.morders||[]).length) return false;
-  const now=Date.now();
   let ch=false;
   DB.morders=DB.morders.filter(o=>{
-    if(+o.due>now) return true;
+    if(campusDue(o.due)>DB.clock) return true;
     fillOrder(o); ch=true; return false;
   });
   if(ch) cycleMarket();
@@ -2105,16 +2124,25 @@ function placeOrder(side){
   else if(wait>=24*HOUR) bump('hopeless');
   else if(wait>=30*MIN) bump('unfav');
   else bump('wait');
-  const o={id:uid(), mid:it.id, side, price, cost:side==='sell'?(cost||0):price, due:Date.now()+wait, fromBroke:!!broke};
+  const o={id:uid(), mid:it.id, side, price, cost:side==='sell'?(cost||0):price, due:DB.clock+wait, fromBroke:!!broke};
   if(wait<=0){ fillOrder(o); }
   else{
     DB.morders.push(o);
-    toast('주문을 걸었습니다 · '+waitLabel(wait)+' · 취소 불가');
+    toast('주문을 걸었습니다 · '+waitLabel(wait)+' 뒤 체결 · 취소 가능');
   }
   cycleMarket();
   S.mkPrice='';
   save(); render();
   checkAchs();
+}
+function cancelOrder(id){
+  const o=(DB.morders||[]).find(x=>String(x.id)===String(id));
+  if(!o) return toast('주문을 찾지 못했습니다');
+  if(o.side==='buy') DB.credit=(DB.credit||0)+(+o.price||0);
+  else DB.owned.push({mid:o.mid, cost:o.cost||0, at:DB.clock});
+  DB.morders=DB.morders.filter(x=>String(x.id)!==String(id));
+  cycleMarket(); save(); render();
+  toast('주문을 취소했습니다');
 }
 function traitHTML(it){
   const ts=it.traits||[];
@@ -2201,7 +2229,8 @@ function mkTradeHTML(it,q){
   if(ord){
     const side=ord.side==='buy'?'매수':'매도';
     return `<div class="mk-trade">
-      <div class="mk-wait">${side} ${won(ord.price)} 크레딧 · ${leftLabel(ord.due)}<br>취소할 수 없습니다.</div>
+      <div class="mk-wait">${side} ${won(ord.price)} 크레딧 · ${leftLabel(ord.due)}</div>
+      <button class="btn sub" data-act="mk-cancel" data-oid="${ord.id}">주문 취소</button>
     </div>`;
   }
   const mine=!!ownedOf(it.id);
@@ -2226,7 +2255,7 @@ function mkTradeHTML(it,q){
       ? `<button class="btn" data-act="mk-sell">팔기</button>`
       : `<button class="btn" data-act="mk-buy">사기</button>
          <button class="btn sub" data-act="mk-down" style="margin-top:8px">매물 내리기</button>`}
-    <div class="mk-hint">기준가보다 ${mine?'싸게 팔면':'비싸게 사면'} 빨리 체결됩니다. 취소는 안 됩니다.</div>
+    <div class="mk-hint">기준가보다 ${mine?'싸게 팔면':'비싸게 사면'} 빨리 체결됩니다. 대기는 캠퍼스 시간입니다. 취소할 수 있습니다.</div>
   </div>`;
 }
 function weekLabel(){
@@ -2681,7 +2710,7 @@ function renderHeader(){
     h=`${back}<div class="h-title">${dp&&isTrade(dp)?'거래':dp&&isPoll(dp)?'투표':'게시판'}</div>${clkHTML()}`; }
   else if(S.view==='hot') h=`<div class="h-title">인기 글</div>${clkHTML()}`;
   else if(S.view==='mine') h=`<div class="h-title">나</div>${clkHTML()}
-    <button class="icon-btn" data-act="add-person" aria-label="인물 추가">＋</button>`;
+    ${S.mine==='people'?`<button class="icon-btn" data-act="add-person" aria-label="인물 추가">＋</button>`:''}`;
   else if(S.view==='cal') h=`<div class="h-title">일정</div>${clkHTML()}`;
   else if(S.view==='search') h=`${back}<div class="h-title">${esc(S.q||'')}</div>`;
   else if(S.view==='mentions'){ const mp=DB.people.find(x=>x.id===S.ment);
@@ -2751,42 +2780,72 @@ function vHot(){
         <span class="hot-m">♡ ${p.likes} · 💬 ${cCount(p)} · ☆ ${p.scraps} · ${ago(p.at)}</span></span>
       </button>`).join('');
 }
+function meAge(){
+  const b=parseYmd((DB.me||{}).birth);
+  if(!b) return '';
+  const w=worldDate();
+  let n=w.getFullYear()-b.y;
+  if((w.getMonth()+1<b.m)||(w.getMonth()+1===b.m&&w.getDate()<b.d)) n--;
+  return n>=0?n+'세':'';
+}
 function vMine(){
+  const tabs=`<div class="mine-tabs">
+    ${[['me','내 프로필'],['trade','거래'],['people','인물']].map(([k,l])=>
+      `<button type="button" data-mine="${k}" class="${(S.mine||'me')===k?'on':''}">${l}</button>`).join('')}
+  </div>`;
+  const sub=S.mine||'me';
+  if(sub==='people') return tabs+`<div class="pad">${peopleBlock()}</div>`;
+  if(sub==='trade') return tabs+mineTrade();
+  return tabs+mineProfile();
+}
+function mineProfile(){
+  const me=DB.me||{};
   const mine=[];
   DB.posts.forEach(p=>p.comments.forEach(c=>{ if(c.by==='me') mine.push({p,c}); }));
   mine.sort((a,b)=>b.c.at-a.c.at);
   const scrap=DB.posts.filter(p=>p.scrapped);
   const liked=DB.posts.filter(p=>p.liked);
-  const bag=(DB.owned||[]).map(o=>{
-    const it=marketOf(o.mid); if(!it) return null;
-    return {o,it,q:quoteOf(it)};
-  }).filter(Boolean);
-  const waits=(DB.morders||[]).filter(x=>x.side==='buy');
+  const age=meAge();
+  const head=[me.dept,me.sid,age].filter(Boolean).join(' · ');
   return `<div class="pad">
-    ${peopleBlock()}
-    <div class="stat-row card" style="display:flex;padding:16px 0;text-align:center">
+    <div class="card">
+      <div class="me-hero">
+        <button type="button" class="me-av" data-act="me-photo" aria-label="프로필 사진">
+          ${me.photo?`<img src="${me.photo}" alt="">`:esc((me.name||'나').trim().slice(0,1)||'나')}</button>
+        <div>
+          <div class="who">${esc(me.name||'이름 없음')}</div>
+          <div class="sub">${esc(head||'프로필을 채워 보세요')}</div>
+        </div>
+      </div>
+      <div class="fld" style="padding-top:8px"><label>이름</label>
+        <input id="meName" value="${esc(me.name||'')}" placeholder="예: 이서준"></div>
+      <div class="row2">
+        <div class="fld"><label>생년월일</label>
+          <input id="meBirth" type="date" value="${esc(me.birth||'')}"></div>
+        <div class="fld"><label>성별</label>
+          <input id="meGender" value="${esc(me.gender||'')}" placeholder="예: 남 / 여"></div>
+      </div>
+      <div class="row2">
+        <div class="fld"><label>학과</label>
+          <input id="meDept" value="${esc(me.dept||'')}" placeholder="예: 광고홍보학과"></div>
+        <div class="fld"><label>학번</label>
+          <input id="meSid" value="${esc(me.sid||'')}" placeholder="예: 24학번"></div>
+      </div>
+      <div class="fld"><label>소개</label>
+        <textarea class="ta" id="meMemo" style="min-height:80px" placeholder="한두 줄로">${esc(me.memo||'')}</textarea></div>
+      <div class="fld">
+        <button class="btn sub" data-act="me-photo">${me.photo?'사진 바꾸기':'프로필 사진 올리기'}</button>
+        ${me.photo?`<button class="btn sub" data-act="me-photo-clear">사진 제거</button>`:''}
+        <button class="btn" data-act="me-save">프로필 저장</button>
+      </div>
+    </div>
+    <div class="stat-row card" style="display:flex;padding:16px 0;text-align:center;margin-top:10px">
       <div style="flex:1"><b style="display:block;font-size:18px;font-weight:800">${mine.length}</b>
         <span style="font-size:11.5px;color:var(--sub)">내 댓글</span></div>
       <div style="flex:1;border-left:1px solid var(--line)"><b style="display:block;font-size:18px;font-weight:800">${scrap.length}</b>
         <span style="font-size:11.5px;color:var(--sub)">스크랩</span></div>
       <div style="flex:1;border-left:1px solid var(--line)"><b style="display:block;font-size:18px;font-weight:800">${liked.length}</b>
         <span style="font-size:11.5px;color:var(--sub)">공감한 글</span></div>
-      <div style="flex:1;border-left:1px solid var(--line)"><b style="display:block;font-size:18px;font-weight:800">${bag.length}</b>
-        <span style="font-size:11.5px;color:var(--sub)">수집품</span></div>
-    </div>
-    <div class="card" style="margin-top:10px">
-      <div class="sec">수집품 ${bag.length}개 · ${won(DB.credit)}</div>
-      ${bag.length?bag.map(x=>`<button class="mrow" data-item="${x.it.id}">
-          <div class="txt" style="font-weight:700">${esc(x.it.name)}</div>
-          <div class="tm">${esc(x.it.owner||'')} · 산 값 ${won(x.o.cost)} · 지금 ${won(x.q)}</div></button>`).join('')
-        :`<div class="note" style="color:var(--faint)">거래 글에서 물건을 사면 여기에 쌓입니다.</div>`}
-      ${waits.length?`<div class="sec" style="padding-top:6px">구매 대기 ${waits.length}건</div>`+
-        waits.map(w=>{
-          const it=marketOf(w.mid);
-          return `<button class="mrow" ${it?`data-item="${it.id}"`:''}>
-            <div class="txt">${esc(it?it.name:'물품')}</div>
-            <div class="tm">${won(w.price)} · ${leftLabel(w.due)}</div></button>`;
-        }).join(''):''}
     </div>
     <div class="card" style="margin-top:10px">
       <div class="sec">내가 쓴 댓글</div>
@@ -2794,7 +2853,7 @@ function vMine(){
           <div class="src">${esc(x.p.title)}</div>
           <div class="txt">${esc(x.c.text)}</div>
           <div class="tm">${ago(x.c.at)}</div></button>`).join('')
-        :`<div class="note" style="color:var(--faint)">아직 단 댓글이 없습니다. 글을 열고 선택지를 눌러보세요.</div>`}
+        :`<div class="note" style="color:var(--faint)">아직 단 댓글이 없습니다.</div>`}
     </div>
     <div class="card" style="margin-top:10px">
       <div class="sec">스크랩</div>
@@ -2802,6 +2861,40 @@ function vMine(){
           <div class="txt" style="font-weight:700">${titleHTML(p)}</div>
           <div class="tm">♡ ${p.likes} · 💬 ${cCount(p)} · ${ago(p.at)}</div></button>`).join('')
         :`<div class="note" style="color:var(--faint)">스크랩한 글이 없습니다.</div>`}
+    </div>
+  </div>`;
+}
+function mineTrade(){
+  const bag=(DB.owned||[]).map(o=>{
+    const it=marketOf(o.mid); if(!it) return null;
+    return {o,it,q:quoteOf(it)};
+  }).filter(Boolean);
+  const waits=DB.morders||[];
+  return `<div class="pad">
+    <div class="card">
+      <div class="sec">잔고 ${won(DB.credit)}</div>
+      <div class="note" style="padding-bottom:8px">대기는 캠퍼스 시간으로 흘러갑니다. 취소하면 크레딧이나 물건이 돌아옵니다.</div>
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div class="sec">구매·판매 대기 ${waits.length}건</div>
+      ${waits.length?waits.map(w=>{
+        const it=marketOf(w.mid);
+        return `<div class="mrow">
+          <button type="button" ${it?`data-item="${it.id}"`:''} style="display:block;width:100%;text-align:left;background:none">
+            <div class="txt" style="font-weight:700">${w.side==='buy'?'매수':'매도'} · ${esc(it?it.name:'물품')}</div>
+            <div class="tm">${won(w.price)} · ${leftLabel(w.due)}</div>
+          </button>
+          <button class="btn sub" data-act="mk-cancel" data-oid="${w.id}" style="margin-top:8px">취소</button>
+        </div>`;
+      }).join('')
+        :`<div class="note" style="color:var(--faint)">대기 중인 주문이 없습니다.</div>`}
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div class="sec">수집품 ${bag.length}개</div>
+      ${bag.length?bag.map(x=>`<button class="mrow" data-item="${x.it.id}">
+          <div class="txt" style="font-weight:700">${esc(x.it.name)}</div>
+          <div class="tm">${esc(x.it.owner||'')} · 산 값 ${won(x.o.cost)} · 지금 ${won(x.q)}</div></button>`).join('')
+        :`<div class="note" style="color:var(--faint)">거래 글에서 물건을 사면 여기에 쌓입니다.</div>`}
     </div>
   </div>`;
 }
@@ -3412,7 +3505,7 @@ function back(){
 
 document.addEventListener('click',e=>{
   if(!DB) return;
-  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot]');
+  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot],[data-mine]');
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
@@ -3420,6 +3513,7 @@ document.addEventListener('click',e=>{
     if(d.tab==='people') bump('tabp');
     nav(d.tab,d.tab); checkAchs(); return;
   }
+  if(d.mine){ S.mine=d.mine; S.view='mine'; S.tab='mine'; lastView=null; return render(); }
   if(d.open){
     S.post=+d.open; S.replyTo=null;
     const p=postOf(S.post);
@@ -3537,6 +3631,17 @@ document.addEventListener('click',e=>{
     case 'leave': leaveCampus(); break;
     case 'mk-buy': placeOrder('buy'); break;
     case 'mk-sell': placeOrder('sell'); break;
+    case 'mk-cancel': cancelOrder(d.oid); break;
+    case 'me-save': {
+      const g=id=>{ const el=$('#'+id); return el?String(el.value||'').trim():''; };
+      DB.me=Object.assign({}, DB.me||{}, {
+        name:g('meName'), birth:g('meBirth'), gender:g('meGender'),
+        dept:g('meDept'), sid:g('meSid'), memo:g('meMemo'),
+        photo:(DB.me&&DB.me.photo)||''
+      });
+      save(); render(); toast('프로필을 저장했습니다'); break; }
+    case 'me-photo': S.photoFor='me'; $('#pfile').click(); break;
+    case 'me-photo-clear': DB.me=DB.me||{}; DB.me.photo=''; save(); render(); toast('사진을 제거했습니다'); break;
     case 'mk-down': {
       const it=marketOf(S.mitem); if(!it) break;
       if(ownedOf(it.id)||orderOf(it.id)){ toast('거래 중인 물건은 내릴 수 없습니다'); break; }
@@ -3549,7 +3654,7 @@ document.addEventListener('click',e=>{
     case 'archive': archiveBoard(); break;
     case 'send': sendComment(); break;
     case 'add-person': S.sheet={type:'person',id:0}; S.pd=null; render(); break;
-    case 'photo-pick': grabPerson(); $('#pfile').click(); break;
+    case 'photo-pick': S.photoFor='person'; grabPerson(); $('#pfile').click(); break;
     case 'photo-clear': grabPerson(); S.pd.photo=''; render(); toast('사진을 제거했습니다'); break;
     case 'save-person': {
       const nm=$('#prName').value.trim(); if(!nm) return toast('이름을 입력하세요');
@@ -3561,7 +3666,7 @@ document.addEventListener('click',e=>{
       const cur=S.sheet.id?DB.people.find(x=>x.id===S.sheet.id):null;
       if(cur) Object.assign(cur,data);
       else { DB.people.push(Object.assign({id:uid()},data)); bump('person'); }
-      S.sheet=null; S.pd=null; S.view='mine'; S.tab='mine';
+      S.sheet=null; S.pd=null; S.view='mine'; S.tab='mine'; S.mine='people';
       mcCache.key=''; save(); render();
       toast(cur?'수정했습니다':'인물을 추가했습니다'); checkAchs(); break; }
     case 'del-person': DB.people=DB.people.filter(x=>x.id!==S.sheet.id);
@@ -3683,6 +3788,11 @@ function keepInput(e){
   else if(id==='evBox') S.g.ev=e.target.value;
   else if(id==='calText') S.calDraft=e.target.value;
   else if(id==='mkPrice') S.mkPrice=e.target.value;
+  else if(id==='meName'||id==='meBirth'||id==='meGender'||id==='meDept'||id==='meSid'||id==='meMemo'){
+    DB.me=DB.me||{};
+    const map={meName:'name',meBirth:'birth',meGender:'gender',meDept:'dept',meSid:'sid',meMemo:'memo'};
+    DB.me[map[id]]=e.target.value; save();
+  }
   else if(id==='ppaste') S.ppaste=e.target.value;
   else if(GMAP[id]) S.g[GMAP[id]]=e.target.value;
   else if(id&&id.indexOf('pr')===0&&S.sheet&&S.sheet.type==='person'){
@@ -3715,7 +3825,11 @@ $('#pfile').addEventListener('change',e=>{
   const f=e.target.files[0]; e.target.value='';
   if(!f) return;
   if(!/^image\//.test(f.type)) return toast('이미지 파일을 선택하세요');
-  shrinkPhoto(f,url=>{ S.pd=S.pd||{}; S.pd.photo=url; render(); toast('사진을 넣었습니다'); });
+  shrinkPhoto(f,url=>{
+    if(S.photoFor==='me'){ DB.me=DB.me||{}; DB.me.photo=url; save(); render(); toast('사진을 넣었습니다'); }
+    else { S.pd=S.pd||{}; S.pd.photo=url; render(); toast('사진을 넣었습니다'); }
+    S.photoFor='';
+  });
 });
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden) flush();
