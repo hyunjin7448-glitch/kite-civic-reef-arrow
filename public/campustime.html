@@ -217,7 +217,7 @@
   .cal-range .pill-d small{display:block;font-size:10.5px;font-weight:700;color:var(--faint);margin-bottom:3px}
   .cal-range .pill-d b{display:block;font-size:13.5px;font-weight:800}
   .cal-range .arr{color:var(--faint);font-size:14px;flex:0 0 auto}
-  .cal-cell.tl{min-height:96px;cursor:default}
+  .cal-cell.tl{min-height:72px;cursor:default}
   .tl-bars{display:flex;flex-direction:column;gap:2px;margin-top:2px}
   .tl-bar{display:block;width:100%;border:0;border-radius:4px;padding:3px 4px;
     font-size:9px;font-weight:800;letter-spacing:-.04em;text-align:left;line-height:1.2}
@@ -1000,7 +1000,7 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
      mtopic:'교재, 전자기기, 옷, 자취 살림',
      evOn:'0',ev:'',evPct:'20',rw:'6',
-     yy:'2026',mm:'9',dd:'1',h0:'0',h1:'6'},
+     yy:'2026',mm:'9',dd:'1',h0:'0',h1:'12'},
   pd:null};
 
 function empty(){
@@ -1100,7 +1100,7 @@ function normalize(d){
   d.cfg=Object.assign({},CFG_DEF,d.cfg||{});
   ['dm','convos','aff','dmq','dmNextAt','dtpl'].forEach(k=>{ delete d[k]; });
   d.polls=d.polls||[]; d.prevealed=d.prevealed||0; d.plastAt=d.plastAt||0;
-  d.tl=Array.isArray(d.tl)?d.tl:[];
+  d.tl=foldTl(Array.isArray(d.tl)?d.tl:[]);
   d.cal=Array.isArray(d.cal)?d.cal:[];
   d.pvault=Array.isArray(d.pvault)?d.pvault:[];
   d.vrev=typeof d.vrev==='number'?d.vrev:0;
@@ -2411,17 +2411,30 @@ function hourBand(){
   const y=Math.max(2026, Math.min(2100, +S.g.yy||campusYear()));
   const m=Math.max(1, Math.min(12, +S.g.mm||1));
   const d=Math.max(1, Math.min(31, +S.g.dd||1));
-  let a=Math.max(0, Math.min(23, +S.g.h0||0));
-  let b=Math.max(1, Math.min(24, +S.g.h1||6));
-  if(b<=a) b=Math.min(24,a+6);
-  return {y,m,d,a,b};
+  const s=sessOf(+S.g.h0||0);
+  return {y,m,d,a:s[0],b:s[1]};
 }
 function campusYear(){
   return worldDate().getFullYear();
 }
-const SLOTS=[[0,6],[6,12],[12,18],[18,24]];
+const SLOTS=[[0,12],[12,24]];
+function sessOf(a){ return (+a||0)<12?[0,12]:[12,24]; }
+function foldTl(list){
+  const rank={wait:1,made:2,in:3};
+  const map={};
+  (list||[]).forEach(x=>{
+    if(!x) return;
+    const s=sessOf(x.a);
+    const k=[+x.y,+x.m,+x.d,s[0]].join('-');
+    const st=x.st||'wait';
+    const prev=map[k];
+    if(!prev) map[k]={id:x.id||uid(), y:+x.y, m:+x.m, d:+x.d, a:s[0], b:s[1], st};
+    else if((rank[st]||0)>(rank[prev.st]||0)) prev.st=st;
+  });
+  return Object.keys(map).map(k=>map[k]);
+}
 function slotOfHour(h){
-  return SLOTS.find(s=>h>=s[0]&&h<s[1])||SLOTS[0];
+  return sessOf(h);
 }
 function clockBand(){
   const d=worldDate();
@@ -2496,7 +2509,7 @@ function shiftBand(dir){
     const dt=new Date(t.y, t.m-1, t.d+(dir>0?1:-1));
     fillDay(dt.getFullYear(), dt.getMonth()+1, dt.getDate());
     sortTl();
-    const a=dir>0?0:18;
+    const a=dir>0?0:12;
     n=DB.tl.find(z=>z.y===dt.getFullYear()&&z.m===dt.getMonth()+1&&z.d===dt.getDate()&&z.a===a);
   }
   if(!n) return toast('더 없는 구간입니다');
@@ -2584,7 +2597,7 @@ function tlCalHTML(){
   const cur=hourBand();
   const today=ymd(worldDate().getFullYear(), worldDate().getMonth()+1, worldDate().getDate());
   const lab={wait:'대기', made:'프롬프트', in:'저장됨'};
-  const slotLab=['0-6','6-12','12-18','18-24'];
+  const slotLab=['0-12','12-24'];
   return `<div class="cal-page">
       <div class="cal-top">
         <button type="button" class="icon-btn" data-tnav="-1" aria-label="이전 달">‹</button>
@@ -2726,7 +2739,9 @@ function calParseSlot(s){
   const m=t.match(/(\d{1,2})\s*[시]?\s*[~\-–]\s*(\d{1,2})/);
   if(m) return [Math.max(0,+m[1]), Math.min(24,+m[2]||24)];
   const n=+t;
-  if(n===0||n===6||n===12||n===18){ const s2=SLOTS.find(x=>x[0]===n); if(s2) return s2; }
+  if(n===0||n===12){ const s2=SLOTS.find(x=>x[0]===n); if(s2) return s2; }
+  if(n===6) return [0,12];
+  if(n===18) return [12,24];
   return [0,24];
 }
 function calNormDate(s){
@@ -2827,7 +2842,7 @@ JSON만 출력. 설명·코드펜스 없이 배열만.
 규칙:
 - name은 짧은 이름. 같은 행사가 여러 날이면 이름을 글자 하나까지 똑같이 써라. 앱이 이어 붙인다.
 - 하루짜리는 date. 기간은 from / to.
-- slot은 "종일" 또는 "0-6" "6-12" "12-18" "18-24". 기본은 종일.
+- slot은 "종일" 또는 "0-12" "12-24". 기본은 종일.
 - 기간 안에 ${n}개 안팎. 축제, 시험, 수강, 휴강, 동아리, 등록, 개강/종강, 소소한 행사를 섞어라.
 - 실존 학교·기업·브랜드 실명 금지. 학교는 "우리 학교".
 - 정치·종교·성적 내용 금지.
@@ -2943,7 +2958,7 @@ function calViewHTML(){
 function calAddHTML(){
   calEnsure();
   const sel=S.calDay;
-  const slotLab=['0~6','6~12','12~18','18~24'];
+  const slotLab=['0~12','12~24'];
   return `<div class="cal-page">${calGridHTML({chips:0,range:1})}
       <div class="cal-body">
         <div class="sec" style="padding:0 0 8px">새 일정</div>
@@ -3022,18 +3037,12 @@ function nowHM(){
 }
 function todHint(){
   const t=hourBand();
-  const mid=(t.a+t.b)/2;
-  if(mid<=3) return '자정~새벽이다. 잠 못 잔 사람, 올빼미 야작, 조용한 한숨. 통학·첫 수업 이야기는 거의 없다.';
-  if(mid<=9) return '새벽~아침이다. 잠에서 깸, 통학, 출석, 첫 수업, 아침 학식.';
-  if(mid<=12) return '오전이다. 강의, 출석, 빈 자리, 과제 공지.';
-  if(mid<=15) return '점심~이른 오후다. 학식, 줄, 밥약, 오후 수업.';
-  if(mid<=19) return '오후~저녁이다. 수업 끝, 팀플, 알바, 저녁.';
-  return '밤이다. 야작, 야식, 벼락치기, 자취, 내일 수업 걱정.';
+  if(t.a<12) return '새벽부터 정오다. 잠에서 깸, 통학, 오전 수업, 점심 직전. 밤 이야기는 거의 없다.';
+  return '오후부터 밤이다. 오후 수업, 알바, 저녁, 야작, 자취. 아침 통학 이야기는 거의 없다.';
 }
 function slotHTML(){
   const t=hourBand();
-  const slots=[[0,6],[6,12],[12,18],[18,24]];
-  return `<div class="mk-cats" style="padding:6px 0 8px;border:0;background:none">${slots.map((s,i)=>{
+  return `<div class="mk-cats" style="padding:6px 0 8px;border:0;background:none">${SLOTS.map((s,i)=>{
     const on=t.a===s[0]&&t.b===s[1];
     return `<button type="button" class="mk-cat ${on?'on':''}" data-slot="${i}">${s[0]}시~${s[1]}시</button>`;
   }).join('')}</div>`;
@@ -3053,19 +3062,21 @@ function buildAll(opt){
   const imgPct=+S.g.imgPct||0, withImg=n>0 && imgPct>0;
   const pPct=DB.people.length?(+S.g.peoplePct||0):0;
   const t=hourBand();
-  const calNames=[];
-  let calPct=0;
+  const arcMap={};
   calForBand(t).forEach(e=>{
     const name=String(e.text||'').trim().replace(/"/g,'');
     if(!name) return;
-    if(calNames.indexOf(name)<0) calNames.push(name);
-    calPct=Math.max(calPct, +e.pct||20);
+    const pct=Math.max(1, Math.min(80, +e.pct||20));
+    if(arcMap[name]==null || pct>arcMap[name]) arcMap[name]=pct;
   });
+  const calNames=Object.keys(arcMap);
   const aPct=Math.max(0, Math.min(50, +S.g.arcPct||15));
   const withCal=calNames.length>0;
   const withArc=((S.g.arc!=='0' && total>0 && aPct>0) || withCal) && total>0;
-  const usePct=withCal?Math.max(aPct, Math.max(5, Math.min(50, calPct||20))):aPct;
-  const arcN=withArc?Math.max(1, Math.round(total*usePct/100)):0;
+  const arcRows=withCal
+    ?calNames.map(name=>{ const pct=arcMap[name]; return {name,pct,n:Math.max(1,Math.round(total*pct/100))}; })
+    :(withArc?[{name:'',pct:aPct,n:Math.max(1,Math.round(total*aPct/100))}]:[]);
+  const arcLine=row=>'떡밥: '+(row.name||'(이번 구간에서 정한 이름)')+' · 반영비율 '+row.pct+'% → '+total+'개 중 '+row.n+'개';
   const when=rangeStamp()+' 글';
   const lo=String(t.a).padStart(2,'0')+':00';
   const hi=t.b>=24?'24:00':(String(t.b).padStart(2,'0')+':00');
@@ -3085,16 +3096,16 @@ function buildAll(opt){
   const arcRule=withArc
     ?(withCal
       ?('\n- arc — 같은 사건을 묶는 이름표다. 게시글·물품·투표에 똑같은 문자열을 붙이면 앱이 이어 보여준다.\n'
-        +'  이번 구간 달력 일정을 떡밥으로 써라. arc 값은 아래 이름을 그대로 복사해라.\n'
-        +calNames.map(x=>'  - '+x).join('\n')+'\n'
-        +'  새 떡밥 이름을 만들지 마라. 일정과 무관한 글에는 arc 키를 넣지 마라.\n'
-        +'  전체를 한 떡밥으로 만들지 마라. 글·물품·투표에 걸쳐 나눠 써도 된다.\n'
-        +'  '+total+'개 중 '+arcN+'개에만 arc를 넣어라 (약 '+usePct+'%. 일정의 화제성).\n'
+        +'  이번 구간 달력 일정을 떡밥으로 써라. 떡밥이 여러 개면 비율을 각각 따로 채워라. 한 항목에 arc는 하나만.\n'
+        +arcRows.map(arcLine).join('\n')+'\n'
+        +'  arc 값은 위 이름을 글자 하나까지 그대로 복사해라. 새 떡밥 이름을 만들지 마라.\n'
+        +'  일정과 무관한 글에는 arc 키를 넣지 마라. 글·물품·투표에 걸쳐 나눠 써도 된다.\n'
         +'  나머지 항목에는 arc 키를 넣지 마라.')
       :('\n- arc — 같은 사건을 묶는 이름표다. 게시글·물품·투표에 똑같은 문자열을 붙이면 앱이 이어 보여준다.\n'
+        +'  떡밥이 여러 갈래면 비율을 각각 따로 센다. 한 항목에 arc는 하나만.\n'
+        +arcRows.map(arcLine).join('\n')+'\n'
         +'  전체를 한 떡밥으로 만들지 마라. 떡밥은 종류를 가리지 않고 나눠 써도 된다 (글↔물품↔투표).\n'
-        +'  '+total+'개 중 '+arcN+'개에만 arc를 넣어라 (약 '+aPct+'%. 예: 30개면 5개 안팎).\n'
-        +'  떡밥은 한두 갈래만. 예: 분실 글 + "[거래] 에어팟" + "주인 나타났냐" 투표.\n'
+        +'  예: 분실 글 + "[거래] 에어팟" + "주인 나타났냐" 투표.\n'
         +'  나머지 항목에는 arc 키를 넣지 마라.'))
     :'\n- arc 필드는 게시글·물품·투표 어디에도 넣지 마라.';
 
@@ -4136,8 +4147,7 @@ document.addEventListener('click',e=>{
     return render();
   }
   if(d.slot!=null && d.slot!==''){
-    const slots=[[0,6],[6,12],[12,18],[18,24]];
-    const s=slots[+d.slot];
+    const s=SLOTS[+d.slot];
     if(s){ S.bandLock=1; S.g.h0=String(s[0]); S.g.h1=String(s[1]); render(); }
     return;
   }
