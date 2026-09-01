@@ -2939,11 +2939,11 @@ function vMore(){
   return `<div class="pad gate">
     <button class="gate-btn" data-act="go-lab">
       <div class="gate-k">기계실</div>
-      <div class="gate-d">글을 만들고 프롬프트를 고친다</div>
+      <div class="gate-d">기간 · 분량 · 소재 · 프롬프트</div>
     </button>
     <button class="gate-btn" data-act="go-stock">
       <div class="gate-k">창고</div>
-      <div class="gate-d">불러오기, 속도, 백업</div>
+      <div class="gate-d">불러오기 · 시계 · 백업</div>
     </button>
     <button class="gate-btn" data-act="leave">
       <div class="gate-k">나가기</div>
@@ -2954,71 +2954,72 @@ function vMore(){
 function vLab(){
   const peopleN=DB.people.length;
   const n=+S.g.n||0, qn=+S.g.qn||0, mn=+S.g.mn||0;
-  const make=`${slider('yy',S.g.yy,'연도','글이 올라온 해')}
+  const when=`<div class="note">하루치를 네 구간으로 나눠 뽑습니다. 첫 줄은 날짜와 구간만 들어갑니다.</div>
+      ${slider('yy',S.g.yy,'연도','글이 올라온 해')}
       ${slider('mm',S.g.mm,'월','1~12월')}
       ${slider('dd',S.g.dd||'1','일','그달의 날짜')}
-      <div class="row"><div class="k">시간 구간<small>하루를 네 번으로 나눠 뽑을 때 씁니다</small></div></div>
+      <div class="row"><div class="k">시간 구간<small>눌러서 고르거나 아래에서 직접 조절</small></div></div>
       ${slotHTML()}
       ${slider('h0',S.g.h0||'0','시작 시각','이 시부터')}
-      ${slider('h1',S.g.h1||'6','끝 시각','이 시 직전까지')}
-      ${slider('timeScale',DB.cfg.timeScale,'캠퍼스 시간 속도','현실보다 빨리 흐르는 사이트 안 시계')}
-      <div class="note" style="padding-top:0">프롬프트 첫 줄: ${esc(rangeStamp())} 글. 구체적인 시각은 적지 않습니다.</div>
-      ${slider('n',S.g.n,'게시글 개수','한 번에 만들 글 수. 0이면 안 만듦')}
-      ${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수. 0이면 안 만듦')}
-      ${slider('mn',S.g.mn,'물품 개수','한 번에 만들 거래 글 수. 0이면 안 만듦')}
-      ${slider('imgPct',S.g.imgPct,'사진 넣는 비율','사진 설명이 붙는 게시글의 비율')}
-      <div class="fld"><label>게시글 주제 힌트</label>
+      ${slider('h1',S.g.h1||'6','끝 시각','이 시 직전까지')}`;
+  const qty=`<div class="note">개수를 0으로 두면 그 종류는 만들지 않습니다.</div>
+      ${slider('n',S.g.n,'게시글 개수','한 번에 만들 글 수')}
+      ${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수')}
+      ${slider('mn',S.g.mn,'물품 개수','한 번에 만들 거래 글 수')}
+      ${slider('imgPct',S.g.imgPct,'사진 넣는 비율','사진 설명이 붙는 게시글의 비율')}`;
+  const topic=`<div class="fld"><label>게시글 주제 힌트</label>
         <input id="gT" value="${esc(S.g.topic)}"></div>
       <div class="fld"><label>투표 소재 힌트</label>
         <input id="qT" value="${esc(S.g.qtopic)}"></div>
       <div class="fld"><label>물품 주제 힌트</label>
         <input id="mT" value="${esc(S.g.mtopic||'')}"></div>
-      <div class="row"><div class="k">떡밥 전개<small>끄면 안 붙음. 켜면 비율만큼만 글·물품·투표가 이어짐</small></div>
+      <div class="row"><div class="k">떡밥 전개<small>끄면 안 붙음. 켜면 비율만큼만 이어짐</small></div>
         <button class="pill ${S.g.arc!=='0'?'on':''}" data-act="toggle-arc">
           ${S.g.arc!=='0'?'켜짐':'꺼짐'}</button></div>
       ${S.g.arc!=='0'?slider('arcPct',S.g.arcPct||'15','떡밥 비율','전체 글·물품·투표 중 떡밥이 붙는 비율'):''}
       <div class="row"><div class="k">사건 직접 작성<small>켜면 적은 사건이 일부 글에만 반영됩니다</small></div>
         <button class="pill ${S.g.evOn==='1'?'on':''}" data-act="toggle-ev">
           ${S.g.evOn==='1'?'켜짐':'꺼짐'}</button></div>
-      ${S.g.evOn==='1'?`<div class="fld"><label>이번 주 사건</label>
+      ${S.g.evOn==='1'?`<div class="fld"><label>이번 구간 사건</label>
         <textarea class="ta" id="evBox" style="min-height:90px" placeholder="한 줄에 하나. 예: 중도 4층에서 에어팟 분실">${esc(S.g.ev||'')}</textarea></div>
-        ${slider('evPct',S.g.evPct||'20','화제성','이 사건이 드러나는 글·물품·투표 비율. 전체에 넣지 않음')}`:''}
+        ${slider('evPct',S.g.evPct||'20','화제성','이 사건이 드러나는 글·물품·투표 비율')}`:''}
       ${peopleN
         ?slider('peoplePct',S.g.peoplePct,`인물 언급 비율 (등록 ${peopleN}명)`,'인물이 언급되는 글의 비율')
-        :`<div class="note">인물 탭에 사람을 등록하면 인물 언급 옵션이 생깁니다.</div>`}
-      <div class="fld"><button class="btn" data-act="gen">프롬프트 만들기</button></div>`;
-  const edit=`<div class="fld"><button class="btn sub" data-act="atpl-toggle">
+        :`<div class="note">인물 탭에 사람을 등록하면 인물 언급 옵션이 생깁니다.</div>`}`;
+  const make=`<div class="note">만든 프롬프트를 복사해 그록에 넣고, 나온 JSON은 창고 · 불러오기에 붙입니다.</div>
+      <div class="fld"><button class="btn" data-act="gen">프롬프트 만들기</button></div>
+      ${S.gen?`<div class="fld">
+        <textarea class="ta" id="genOut" style="min-height:160px" readonly>${esc(S.gen)}</textarea>
+        <button class="btn" data-act="copy">프롬프트 복사</button></div>`:''}`;
+  const edit=`<div class="note">자리표시자는 만들 때 자동으로 채워집니다.
+        <b>{시점}</b> <b>{할일}</b> <b>{사건}</b> <b>{인물}</b> <b>{사진필드}</b> <b>{사진규칙}</b> <b>{떡밥필드}</b> <b>{떡밥규칙}</b></div>
+      <div class="fld"><button class="btn sub" data-act="atpl-toggle">
           ${S.atplEdit?'통합 프롬프트 닫기':'통합 프롬프트 수정'}${DB.atpl?' (수정됨)':''}</button>
         ${S.atplEdit?`
-        <div class="note" style="padding:10px 0 6px">중괄호 자리표시자는 만들 때 자동으로 채워집니다.
-          <b>{시점}</b> <b>{할일}</b> <b>{사건}</b> <b>{인물}</b> <b>{사진필드}</b> <b>{사진규칙}</b> <b>{떡밥필드}</b> <b>{떡밥규칙}</b></div>
         <textarea class="ta" id="atplBox" style="min-height:280px">${esc(S.atplDraft!=null?S.atplDraft:atpl())}</textarea>
         <button class="btn" data-act="atpl-save">이 내용으로 저장</button>
         <button class="btn sub" data-act="atpl-reset">기본값으로 되돌리기</button>`:''}
         <button class="btn sub" data-act="ptpl-toggle" style="margin-top:8px">
           ${S.ptplEdit?'인물 프롬프트 닫기':'인물 프롬프트 수정'}${DB.ptpl?' (수정됨)':''}</button>
         ${S.ptplEdit?`
-        <div class="note" style="padding:10px 0 6px">인물 반영을 켰을 때 프롬프트 끝에 붙는 부분입니다.
-          <b>{명단}</b>은 인물 탭 내용으로, <b>{빈도}</b>는 위에서 고른 등장 빈도로 채워집니다.</div>
+        <div class="note" style="padding:10px 0 6px"><b>{명단}</b>은 인물 탭 내용으로, <b>{빈도}</b>는 등장 빈도로 채워집니다.</div>
         <textarea class="ta" id="ptplBox" style="min-height:200px">${esc(S.ptplDraft!=null?S.ptplDraft:ptpl())}</textarea>
         <button class="btn" data-act="ptpl-save">이 내용으로 저장</button>
         <button class="btn sub" data-act="ptpl-reset">기본값으로 되돌리기</button>`:''}</div>`;
-  const out=S.gen?`<div class="fld">
-      <textarea class="ta" id="genOut" style="min-height:160px" readonly>${esc(S.gen)}</textarea>
-      <button class="btn" data-act="copy">프롬프트 복사</button></div>`:'';
   return `<div class="pad">
-    ${foldCard('make', '한 번에 만들기', rangeStamp()+' · 글 '+n+' · 투표 '+qn+' · 물품 '+mn,
-      `<div class="note">하루치를 네 구간으로 나눠 만듭니다. 개수를 0으로 두면 그 종류는 비웁니다.</div>${make}`, true)}
-    ${foldCard('tpl', '기본 프롬프트', (DB.atpl||DB.ptpl?'수정됨':'원문 고치기'), edit, false)}
-    ${S.gen?foldCard('out', '만든 프롬프트', '복사해서 붙여넣기', out, true):''}
+    <div class="note" style="padding:4px 2px 10px">기계실 · 글을 만드는 곳. 시계와 저장은 창고입니다.</div>
+    ${foldCard('when', '기간', rangeStamp(), when, true)}
+    ${foldCard('qty', '분량', '글 '+n+' · 투표 '+qn+' · 물품 '+mn, qty, true)}
+    ${foldCard('topic', '소재', S.g.arc!=='0'?'떡밥 켜짐':'힌트 · 떡밥 · 사건', topic, false)}
+    ${foldCard('make', '만들기', S.gen?'복사해서 붙여넣기':'프롬프트 출력', make, true)}
+    ${foldCard('tpl', '원문', (DB.atpl||DB.ptpl?'수정됨':'기본 프롬프트'), edit, false)}
   </div>`;
 }
 function vStock(){
   const c=DB.cfg;
   const waiting=DB.feed.length-DB.revealed;
   const pwait=DB.polls.length-DB.prevealed;
-  const load=`<div class="note">AI가 출력한 내용을 그대로 붙여넣으세요. 코드펜스나 앞뒤 설명이 섞여 있어도 배열만 뽑아냅니다.
-        JSON이 <b>여러 세트</b>여도 한 번에 붙여넣으면 전부 뒤에 이어 쌓입니다.</div>
+  const load=`<div class="note">기계실에서 만든 프롬프트로 그록이 낸 JSON을 붙입니다. 코드펜스나 앞뒤 설명이 섞여 있어도 배열만 뽑아냅니다. 여러 세트여도 한 번에 이어 쌓입니다.</div>
       <div class="fld">
         <textarea class="ta" id="paste" placeholder='[ { "title": "...", "body": "..." } ]'>${esc(S.pasted)}</textarea>
         <button class="btn" data-act="add-paste">붙여넣은 내용 추가</button>
@@ -3031,8 +3032,8 @@ function vStock(){
           <span class="c">${x.count}개</span></div>`).join('')}
       ${DB.sources.length>3?`<button class="more-btn" data-act="src-toggle">
         ${S.srcOpen?'접기':`이전 기록 ${DB.sources.length-3}개 더 보기`}</button>`:''}`;
-  const speed=`${slider('timeScale',c.timeScale,'캠퍼스 시간','현실보다 빨리 흐르는 사이트 안 시계')}
-      <div class="note" style="padding-top:0">지금은 ${esc(worldLabel())} · ${esc(todNow()[3])}</div>
+  const speed=`<div class="note">지금은 ${esc(worldLabel())} · ${esc(todNow()[3])}</div>
+      ${slider('timeScale',c.timeScale,'캠퍼스 시간 속도','현실보다 빨리 흐르는 사이트 안 시계')}
       ${slider('postGap',c.postGap,'글 올라오는 간격','다음 글이 게시판에 올라오기까지 (현실 시간)')}
       ${slider('commentGap',c.commentGap,'댓글 달리는 간격','한 글에 댓글이 하나씩 붙는 속도')}
       ${slider('replyDelay',c.replyDelay,'답글 지연','선택지를 누른 뒤 답글이 오기까지 (실제 초)')}
@@ -3046,12 +3047,19 @@ function vStock(){
   const replay=`<div class="note">지금 게시판에 떠 있는 글을 보관함으로 옮깁니다. 보드가 비고, 시간이 지나면 보관함에서 다시 올라옵니다. 새로고침으로는 글이 더 나오지 않습니다.</div>
       <div class="sec">게시판 ${DB.posts.length}개 · 보관함 글 ${vaultWait(false)}개 · 투표 ${vaultWait(true)}개</div>
       <div class="fld"><button class="btn sub" data-act="archive">지금 글을 보관함으로</button></div>`;
-  const market=`${slider('mK',c.mK,'시세 변동 계수','언급이 시세에 얼마나 크게 반영되는지')}
+  const market=`<div class="note">거래 글의 시세와 체결만 다룹니다.</div>
+      ${slider('mK',c.mK,'시세 변동 계수','언급이 시세에 얼마나 크게 반영되는지')}
       ${slider('mHi',c.mHi,'상한 배수','시세가 기준가의 몇 배까지 오를 수 있는지')}
       ${slider('mLo',c.mLo,'하한 배수','시세가 기준가의 이 비율 아래로 내려가지 않습니다')}
       ${slider('mFill',c.mFill,'체결 시간 배수','호가 유리·불리로 정해진 대기 시간에 곱한다')}
       ${slider('mCred',c.mCred,'크레딧 보상량','공감·댓글·투표로 받는 크레딧 배율')}
       ${slider('mWin',c.mWin,'변동률 비교 구간','현재가를 몇 분 전 값과 비교할지')}`;
+  const ppl=`<div class="note">다른 파일에서 쓰던 인물 목록을 붙이면 이름이 겹치지 않는 것만 추가됩니다. 인물 카드는 인물 탭에서 고칩니다.</div>
+      <div class="fld">
+        <textarea class="ta" id="ppaste" style="min-height:90px" placeholder='[{"name":"김대현 교수","role":"전공 교수"}]'>${esc(S.ppaste)}</textarea>
+        <button class="btn sub" data-act="people-add">인물 목록 붙여넣어 추가</button>
+        <button class="btn sub" data-act="people-copy" style="margin-top:8px">지금 인물 ${DB.people.length}명 복사</button>
+      </div>`;
   const backup=`<div class="note">데이터는 이 브라우저의 <b>현재 주소</b>에만 저장됩니다.
         파일을 다른 이름으로 다시 받거나 주소가 바뀌면 빈 상태로 시작합니다.
         <b>인물을 등록한 뒤에는 꼭 백업 파일을 받아두세요.</b></div>
@@ -3062,13 +3070,6 @@ function vStock(){
           ${S.backupText?'백업 텍스트 닫기':'백업 텍스트로 보기 (복사용)'}</button>
         ${S.backupText?`<textarea class="ta" id="bkBox" style="min-height:140px;margin-top:9px" readonly>${esc(S.backupText)}</textarea>
         <button class="btn" data-act="backup-copy">백업 텍스트 복사</button>`:''}
-      </div>
-      <div class="sec" style="padding-top:2px">인물만 옮기기</div>
-      <div class="note">다른 파일에서 쓰던 인물 목록을 여기에 붙여넣으면 이름이 겹치지 않는 것만 추가됩니다.</div>
-      <div class="fld">
-        <textarea class="ta" id="ppaste" style="min-height:90px" placeholder='[{"name":"김대현 교수","role":"전공 교수"}]'>${esc(S.ppaste)}</textarea>
-        <button class="btn sub" data-act="people-add">인물 목록 붙여넣어 추가</button>
-        <button class="btn sub" data-act="people-copy" style="margin-top:8px">지금 인물 ${DB.people.length}명 복사</button>
       </div>`;
   const quota=`<div class="row"><div class="k">저장 방식
         <small>${idb?'IndexedDB — 브라우저가 허용하는 만큼 넉넉하게 씁니다':'브라우저 기본 저장소 — 약 5MB까지 저장됩니다'}</small></div></div>
@@ -3083,17 +3084,18 @@ function vStock(){
       <div class="note">쌓아둔 글, 공개된 게시글, 내가 단 댓글이 모두 지워지고 처음 상태로 돌아갑니다.</div>
       <div class="fld"><button class="btn danger" data-act="reset">데이터 초기화</button></div>`;
   return `<div class="pad">
-    ${foldCard('import','글 불러오기',`대기 글 ${waiting} · 투표 ${pwait}`,load,true)}
-    ${foldCard('speed','공개 속도','캠퍼스 시계 · 간격 · 시간대',speed,false)}
-    ${foldCard('replay','다시보기',`보관함 글 ${vaultWait(false)+vaultWait(true)}개`,replay,true)}
-    ${foldCard('mkset','시장 운영','시세 · 매물 수 · 체결',market,false)}
-    ${foldCard('backup','백업','파일 저장 · 복원 · 인물 옮기기',backup,false)}
-    ${foldCard('quota','저장 공간',S.quota?fmtMB(S.quota.use)+' 사용 중':'확인 중',quota,false)}
+    <div class="note" style="padding:4px 2px 10px">창고 · 글을 넣고 시계를 돌리는 곳. 프롬프트는 기계실입니다.</div>
+    ${foldCard('import','불러오기',`대기 글 ${waiting} · 투표 ${pwait}`,load,true)}
+    ${foldCard('clock','시계','속도 · 간격 · 시간대',speed,false)}
+    ${foldCard('replay','다시보기',`보관함 ${vaultWait(false)+vaultWait(true)}개`,replay,false)}
+    ${foldCard('mkset','시장','시세 · 체결 · 크레딧',market,false)}
+    ${foldCard('ppl','인물',DB.people.length+'명',ppl,false)}
+    ${foldCard('backup','백업','파일 저장 · 복원',backup,false)}
+    ${foldCard('quota','저장',S.quota?fmtMB(S.quota.use)+' 사용 중':'확인 중',quota,false)}
     ${foldCard('wipe','초기화','샘플 글 · 전체 데이터',wipe,false)}
     <div class="note" style="text-align:center;padding:18px 0 8px">캠퍼스타임 · 데이터는 이 브라우저에만 저장됩니다</div>
   </div>`;
 }
-
 function renderSheet(){
   let inner='';
   if(S.sheet.type==='person'){
