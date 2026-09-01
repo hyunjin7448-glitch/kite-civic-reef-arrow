@@ -946,6 +946,8 @@ const SLD={
     ends:['현실','하루 10분']},
   mFill:{list:[0.25,0.5,1,2,4], fmt:v=>v===1?'기본':v+'×', ends:['¼×','4×']},
   mCred:{list:[0.5,1,1.5,2,3], fmt:v=>v===1?'기본':v+'×', ends:['½×','3×']},
+  rw:{list:[1,3,6,12,24,72,168],
+    fmt:v=>v<24?v+'시간':(v===24?'하루':Math.round(v/24)+'일'), ends:['1시간','7일']},
 };
 function sVal(key,cur){
   const d=SLD[key];
@@ -986,7 +988,7 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
      mtopic:'교재, 전자기기, 옷, 자취 살림',
-     evOn:'0',ev:'',evPct:'20',
+     evOn:'0',ev:'',evPct:'20',rw:'6',
      yy:'2026',mm:'9',dd:'1',h0:'0',h1:'6'},
   pd:null};
 
@@ -1319,6 +1321,63 @@ function srcClone(p){
   }
   if(p.pk==='trade'){ o.trade=1; o.mid=p.mid; }
   return o;
+}
+function stampFromAt(o, at){
+  const d=new Date(WORLD0+(+at||0));
+  o.date=ymd(d.getFullYear(), d.getMonth()+1, d.getDate());
+  o.time=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function spliceWait(kind, items){
+  if(!items.length) return;
+  if(kind==='poll'){
+    DB.pvault=DB.pvault||[];
+    const i=DB.pvrev||0;
+    DB.pvault=DB.pvault.slice(0,i).concat(items, DB.pvault.slice(i));
+  }else{
+    DB.vault=DB.vault||[];
+    const i=DB.vrev||0;
+    DB.vault=DB.vault.slice(0,i).concat(items, DB.vault.slice(i));
+  }
+}
+function rewindDelta(){ return Math.max(1, +S.g.rw||6)*HOUR; }
+function rewindTarget(){ return Math.max(0, (DB.clock||0)-rewindDelta()); }
+function rewindCount(to){ return (DB.posts||[]).filter(p=>(+p.at||0)>to).length; }
+function rewindClock(){
+  if(!DB) return;
+  const to=rewindTarget();
+  if(!(to<DB.clock)) return toast('더 되돌릴 시간이 없습니다');
+  const gone=(DB.posts||[]).filter(p=>(+p.at||0)>to)
+    .sort((a,b)=>(+a.at||0)-(+b.at||0));
+  const keep=[];
+  const feedStash=[], pollStash=[];
+  (DB.posts||[]).forEach(p=>{
+    if((+p.at||0)>to){
+      const o=srcClone(p);
+      stampFromAt(o, p.at);
+      if(p.pk==='poll') pollStash.push(o);
+      else feedStash.push(o);
+    }else{
+      p.comments=(p.comments||[]).filter(c=>(+c.at||0)<=to);
+      const srcN=p.comments.filter(c=>c.by==='a'||c.by==='w').length;
+      p.cn=Math.min(p.cn||0, srcN);
+      p.cAt=p.comments.reduce((m,c)=>Math.max(m,+c.at||0), +p.at||to);
+      keep.push(p);
+    }
+  });
+  DB.posts=keep;
+  const live=new Set(keep.map(p=>p.id));
+  DB.pending=(DB.pending||[]).filter(q=>live.has(q.pid));
+  spliceWait('feed', feedStash.sort((a,b)=>(dueOf(a)||0)-(dueOf(b)||0)));
+  spliceWait('poll', pollStash.sort((a,b)=>(dueOf(a)||0)-(dueOf(b)||0)));
+  if(S.post && !live.has(S.post)){ S.post=null; S.replyTo=null; if(S.view==='detail'){ S.view='feed'; S.tab='feed'; } }
+  DB.clock=to;
+  DB.lastTick=Date.now();
+  DB.lastPostAt=Math.min(DB.lastPostAt||0, to);
+  DB.plastAt=Math.min(DB.plastAt||0, to);
+  cycleMarket();
+  S.sheet=null;
+  save(); render();
+  toast('시간을 되돌렸습니다 · 글 '+gone.length+'개를 보관함으로');
 }
 function vaultWait(poll){
   if(poll) return Math.max(0,(DB.pvault||[]).length-(DB.pvrev||0));
@@ -3355,6 +3414,8 @@ function vStock(){
       <div class="row"><div class="k">시간 정지
         <small>${DB.cfg.pause?'멈춰 있습니다. 글·댓글·체결이 대기합니다.':'흐르는 중입니다. 시계를 눌러도 멈출 수 있습니다.'}</small></div>
         <button class="pill ${DB.cfg.pause?'on':''}" data-act="clock-pause">${DB.cfg.pause?'정지 중':'흐르는 중'}</button></div>
+      ${slider('rw',S.g.rw||'6','시간 되돌리기','이만큼 과거로. 그 사이 글은 보관함으로 돌아갑니다')}
+      <div class="fld"><button class="btn sub" data-act="rewind-ask">시간 되돌리기</button></div>
       ${slider('timeScale',c.timeScale,'캠퍼스 시간 속도','현실보다 빨리 흐르는 사이트 안 시계')}
       ${slider('commentGap',c.commentGap,'댓글 달리는 간격','한 글에 댓글이 하나씩 붙는 속도')}
       ${slider('replyDelay',c.replyDelay,'답글 지연','선택지를 누른 뒤 답글이 오기까지 (실제 초)')}
@@ -3464,6 +3525,17 @@ function renderSheet(){
         기본 글 ${DEFAULT_FEED.length}개와 투표 ${DEFAULT_POLLS.length}개가 게시판에서 빠지고 처음부터 다시 올라옵니다.
         그 글에 단 댓글·공감도 지워집니다. 붙여넣은 글, 인물, 시장은 그대로입니다.</div>
       <button class="btn" data-act="reset-sample-yes">다시 넣기</button>
+      <button class="btn sub" data-act="close-sheet">취소</button>`;
+  }else if(S.sheet.type==='rewind'){
+    const to=rewindTarget();
+    const n=rewindCount(to);
+    const d=new Date(WORLD0+to);
+    const when=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 '+d.getHours()+'시 '+String(d.getMinutes()).padStart(2,'0')+'분';
+    inner=`<h3>시간을 되돌릴까요?</h3>
+      <div style="font-size:13.5px;color:var(--sub);line-height:1.6;margin-bottom:14px">
+        ${esc(when)}으로 돌아갑니다. 그 시각 이후 글 ${n}개가 보관함으로 가고, 시간이 다시 흐르면 올라옵니다.
+        그 글에 단 댓글·공감도 함께 내려갑니다.</div>
+      <button class="btn danger" data-act="rewind-yes">되돌리기</button>
       <button class="btn sub" data-act="close-sheet">취소</button>`;
   }
   const el=document.createElement('div');
@@ -3726,6 +3798,8 @@ document.addEventListener('click',e=>{
     case 'enter': enterCampus(); break;
     case 'leave': leaveCampus(); break;
     case 'clock-pause': togglePause(); break;
+    case 'rewind-ask': S.sheet={type:'rewind'}; render(); break;
+    case 'rewind-yes': rewindClock(); break;
     case 'mk-buy': placeOrder('buy'); break;
     case 'mk-sell': placeOrder('sell'); break;
     case 'mk-cancel': cancelOrder(d.oid); break;
