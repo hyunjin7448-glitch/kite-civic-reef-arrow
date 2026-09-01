@@ -426,7 +426,7 @@ const CFG_DEF={
   postGap:2, commentGap:0.75, replyDelay:6, tod:true, timeScale:24,
   mK:0.35, mHi:10, mLo:0.1, mSlots:4, mBack:1, mFill:1, mCred:1, mBand:0.3, mWin:10
 };
-const CFG_SLD={postGap:1,commentGap:1,replyDelay:1,timeScale:1,mK:1,mHi:1,mLo:1,mSlots:1,mBack:1,mFill:1,mCred:1,mBand:1,mWin:1};
+const CFG_SLD={commentGap:1,replyDelay:1,timeScale:1,mK:1,mHi:1,mLo:1,mSlots:1,mBack:1,mFill:1,mCred:1,mBand:1,mWin:1};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -887,8 +887,6 @@ const DEFAULT_ATPL=`{시점}
 {사건}{할일}`;
 
 const SLD={
-  postGap:{list:[0.25,0.5,1,2,3,5,10,15,20,30],
-    fmt:v=>v<1?Math.round(v*60)+'초':v+'분', ends:['15초','30분']},
   commentGap:{list:[0.1,0.25,0.5,0.75,1,1.5,2,3,5,10],
     fmt:v=>v<1?Math.round(v*60)+'초':v+'분', ends:['6초','10분']},
   replyDelay:{min:1,max:15,step:1, fmt:v=>v+'초', ends:['1초','15초']},
@@ -1226,11 +1224,9 @@ function sortWait(list, revealed){
   });
   return pub.concat(wait);
 }
-function nextDue(f, lastAt, gap, has){
+function nextDue(f){
   const sched=dueOf(f);
-  if(sched!=null && sched>DB.clock) return sched;
-  if(!has) return DB.clock;
-  return lastAt+gap;
+  return sched==null?DB.clock:sched;
 }
 function spawnPost(f,due,poll,fi){
   const trade=!!(f&&(f.trade||f.mid)&&!poll);
@@ -1405,9 +1401,6 @@ function bumpClockUI(){
   const el=document.getElementById('worldClk');
   if(el) el.textContent=worldLabel();
 }
-function dripGap(){
-  return Math.max(0.05, DB.cfg.postGap)*MIN*rate()*timeScale();
-}
 function dripCGap(){
   return Math.max(0.05, DB.cfg.commentGap)*MIN*rate()*timeScale();
 }
@@ -1424,25 +1417,23 @@ function tick(){
   DB.clock+=Math.max(0, now-(DB.lastTick||now))*timeScale();
   DB.lastTick=now;
   let ch=false, posted=false;
-  const gap=dripGap();
-  const has=k=>DB.posts.some(p=>p.pk===k || (k==='feed'&&p.pk==='trade'));
   while(vaultWait(false)>0){
-    const due=nextDue((DB.vault||[])[DB.vrev||0], DB.lastPostAt, gap, has('feed'));
+    const due=nextDue((DB.vault||[])[DB.vrev||0]);
     if(due>DB.clock) break;
     publishVault(false); DB.lastPostAt=due; ch=true; posted=true;
   }
   while(DB.revealed<DB.feed.length){
-    const due=nextDue(DB.feed[DB.revealed], DB.lastPostAt, gap, has('feed'));
+    const due=nextDue(DB.feed[DB.revealed]);
     if(due>DB.clock) break;
     publishPost(DB.revealed,due,false); DB.lastPostAt=due; DB.revealed++; ch=true; posted=true;
   }
   while(vaultWait(true)>0){
-    const due=nextDue((DB.pvault||[])[DB.pvrev||0], DB.plastAt, gap, has('poll'));
+    const due=nextDue((DB.pvault||[])[DB.pvrev||0]);
     if(due>DB.clock) break;
     publishVault(true); DB.plastAt=due; ch=true; posted=true;
   }
   while(DB.prevealed<DB.polls.length){
-    const due=nextDue(DB.polls[DB.prevealed], DB.plastAt, gap, has('poll'));
+    const due=nextDue(DB.polls[DB.prevealed]);
     if(due>DB.clock) break;
     publishPost(DB.prevealed,due,true); DB.plastAt=due; DB.prevealed++; ch=true; posted=true;
   }
@@ -1612,15 +1603,8 @@ document.addEventListener('wheel',e=>{
 },{passive:true});
 
 function skipNext(){
-  const g=dripGap();
-  if(vaultWait(false)+vaultWait(true)>0){
-    bump('skip'); publishOne(); toast('보관함에서 다음 글을 올렸습니다'); return;
-  }
-  let done=false;
-  if(DB.revealed<DB.feed.length){ DB.lastPostAt=DB.clock-g; done=true; }
-  if(DB.prevealed<DB.polls.length){ DB.plastAt=DB.clock-g; done=true; }
-  if(!done) return toast('공개할 것이 더 없습니다');
-  bump('skip'); tick(); toast('다음 항목을 공개했습니다'); render(); checkAchs();
+  if(waitCount()<=0) return toast('공개할 것이 더 없습니다');
+  bump('skip'); publishOne(); toast('다음 항목을 공개했습니다'); checkAchs();
 }
 function splitSrc(list, sample, posts, isPoll){
   const titles=new Set(sample.map(x=>x.title));
@@ -3168,7 +3152,6 @@ function vStock(){
         ${S.srcOpen?'접기':`이전 기록 ${DB.sources.length-3}개 더 보기`}</button>`:''}`;
   const speed=`<div class="note">지금은 ${esc(worldLabel())} · ${esc(todNow()[3])}</div>
       ${slider('timeScale',c.timeScale,'캠퍼스 시간 속도','현실보다 빨리 흐르는 사이트 안 시계')}
-      ${slider('postGap',c.postGap,'글 올라오는 간격','다음 글이 게시판에 올라오기까지 (현실 시간)')}
       ${slider('commentGap',c.commentGap,'댓글 달리는 간격','한 글에 댓글이 하나씩 붙는 속도')}
       ${slider('replyDelay',c.replyDelay,'답글 지연','선택지를 누른 뒤 답글이 오기까지 (실제 초)')}
       <div class="row"><div class="k">시간대 반영
