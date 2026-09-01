@@ -37,6 +37,9 @@
     font-size:19px;color:var(--sub)}
   .icon-btn:active{background:var(--bg)}
   .quiet{color:#D6DAE0;font-size:17px;letter-spacing:2px}
+  .h-clock{flex:0 0 auto;text-align:right;padding:0 4px 0 8px;line-height:1.2;
+    font-size:10.5px;font-weight:700;color:var(--sub);letter-spacing:-.02em;white-space:nowrap}
+  .h-clock b{display:block;font-size:12px;font-weight:800;color:var(--ink)}
 
   main{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;padding-bottom:calc(76px + var(--safe-b))}
@@ -390,12 +393,13 @@
 <script>
 "use strict";
 const MIN=60000, HOUR=60*MIN, KEY='campustime:v3';
+const WORLD0=new Date(2026,8,1,8,0,0).getTime();
 const MKT_K=0.35, MKT_DECAY=0.1, MKT_LO=0.1, MKT_HI=10, MKT_HIST=6, MKT_WIN=10, MKT_SLOTS=4, MKT_FLOOR=0.1;
 const CFG_DEF={
-  postGap:2, commentGap:0.75, replyDelay:6, tod:true,
+  postGap:2, commentGap:0.75, replyDelay:6, tod:true, timeScale:24,
   mK:0.35, mHi:10, mLo:0.1, mSlots:4, mBack:1, mFill:1, mCred:1, mBand:0.3, mWin:10
 };
-const CFG_SLD={postGap:1,commentGap:1,replyDelay:1,mK:1,mHi:1,mLo:1,mSlots:1,mBack:1,mFill:1,mCred:1,mBand:1,mWin:1};
+const CFG_SLD={postGap:1,commentGap:1,replyDelay:1,timeScale:1,mK:1,mHi:1,mLo:1,mSlots:1,mBack:1,mFill:1,mCred:1,mBand:1,mWin:1};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -861,6 +865,9 @@ const SLD={
   ww:{min:1,max:5,step:1, fmt:v=>v+'주차', ends:['1주차','5주차']},
   arcPct:{min:0,max:50,step:5, fmt:v=>v==0?'없음':v+'%', ends:['없음','50%']},
   evPct:{min:5,max:50,step:5, fmt:v=>v+'%', ends:['낮음','높음']},
+  timeScale:{list:[1,6,12,24,48,72,144],
+    fmt:v=>v===1?'현실과 같음':(v>=24?('하루 '+Math.round(1440/v)+'분'):('1시간 '+Math.round(60/v)+'분')),
+    ends:['현실','하루 10분']},
   mK:{list:[0.1,0.15,0.2,0.25,0.35,0.5,0.7,1], fmt:v=>String(v), ends:['약함','민감']},
   mHi:{list:[3,5,8,10,15,20], fmt:v=>(v*100)+'%', ends:['300%','2000%']},
   mLo:{list:[0.05,0.1,0.15,0.2,0.3], fmt:v=>Math.round(v*100)+'%', ends:['5%','30%']},
@@ -1249,8 +1256,32 @@ const TOD=[
   [21,24,0.6,'밤 · 가장 붐빔'],
   [0,2,1.6,'자정 이후 · 잦아듦']
 ];
+function timeScale(){ return Math.max(1, cfgNum('timeScale',24)); }
+function worldDate(){ return new Date(WORLD0 + (DB?DB.clock:0)); }
+function worldLabel(){
+  const d=worldDate();
+  const days='일월화수목금토';
+  const h=d.getHours();
+  const ap=h<5?'새벽':h<12?'오전':h<18?'오후':'밤';
+  const h12=h%12||12;
+  const mm=String(d.getMinutes()).padStart(2,'0');
+  return (d.getMonth()+1)+'.'+d.getDate()+' '+days[d.getDay()]+' '+ap+' '+h12+':'+mm;
+}
+function clkHTML(){
+  return `<div class="h-clock" id="worldClk">${esc(worldLabel())}</div>`;
+}
+function bumpClockUI(){
+  const el=document.getElementById('worldClk');
+  if(el) el.textContent=worldLabel();
+}
+function dripGap(){
+  return Math.max(0.05, DB.cfg.postGap)*MIN*rate()*timeScale();
+}
+function dripCGap(){
+  return Math.max(0.05, DB.cfg.commentGap)*MIN*rate()*timeScale();
+}
 function todNow(){
-  const h=new Date().getHours();
+  const h=worldDate().getHours();
   for(let i=0;i<TOD.length;i++){ const [a,b]=TOD[i]; if(h>=a&&h<b) return TOD[i]; }
   return [0,24,1,'보통'];
 }
@@ -1258,10 +1289,10 @@ function rate(){ return (DB.cfg.tod===false)?1:todNow()[2]; }
 function tick(){
   if(!DB) return;
   const now=Date.now();
-  DB.clock+=Math.max(0, now-(DB.lastTick||now));
+  DB.clock+=Math.max(0, now-(DB.lastTick||now))*timeScale();
   DB.lastTick=now;
   let ch=false, posted=false;
-  const gap=Math.max(0.05,DB.cfg.postGap)*MIN*rate();
+  const gap=dripGap();
   const has=k=>DB.posts.some(p=>p.pk===k || (k==='feed'&&p.pk==='trade'));
   while(DB.revealed<DB.feed.length){
     const due = has('feed')? Math.max(DB.lastPostAt+gap, DB.clock-gap) : DB.clock;
@@ -1273,7 +1304,7 @@ function tick(){
     if(due>DB.clock) break;
     publishPost(DB.prevealed,due,true); DB.plastAt=due; DB.prevealed++; ch=true; posted=true;
   }
-  const cgap=Math.max(0.05,DB.cfg.commentGap)*MIN*rate();
+  const cgap=dripCGap();
   DB.posts.forEach(p=>{
     const f=srcOf(p); if(!f) return;
     const cs=f.comments||[];
@@ -1312,6 +1343,7 @@ function pulse(){
   if(settleOrders()) ch=true;
   if(cycleMarket()) ch=true;
   if(ch){ save(); redraw(); }
+  bumpClockUI();
   checkAchs();
 }
 let pullFrom=0, mode='', armed=false, wheelAcc=0, wheelAt=0;
@@ -1436,7 +1468,7 @@ document.addEventListener('wheel',e=>{
 },{passive:true});
 
 function skipNext(){
-  const g=Math.max(0.05,DB.cfg.postGap)*MIN;
+  const g=dripGap();
   if(vaultWait(isPollTab())>0){
     bump('skip'); publishOne(); toast('보관함에서 다음 글을 올렸습니다'); return;
   }
@@ -1657,7 +1689,7 @@ function bump(k,n){
   DB.marks[k]=(+DB.marks[k]||0)+(n==null?1:n);
 }
 function nightBump(){
-  const h=new Date().getHours();
+  const h=worldDate().getHours();
   if(h>=21||h<7) bump('night');
 }
 function isTrade(p){ return !!(p&&p.pk==='trade'); }
@@ -2327,12 +2359,13 @@ function renderHeader(){
   const back='<button class="icon-btn" data-act="back" aria-label="뒤로">‹</button>';
   let h='';
   if(S.view==='feed') h=`<div class="h-title brand">캠퍼스<span>타임</span></div>
+    ${clkHTML()}
     <button class="icon-btn quiet" data-act="go-settings" aria-label="더보기">•••</button>`;
   else if(S.view==='detail'){ const dp=postOf(S.post);
-    h=`${back}<div class="h-title">${dp&&isPoll(dp)?'투표':'게시판'}</div>`; }
-  else if(S.view==='poll') h=`<div class="h-title">투표</div>`;
-  else if(S.view==='hot') h=`<div class="h-title">인기 글</div>`;
-  else if(S.view==='mine') h=`<div class="h-title">나의 활동</div>`;
+    h=`${back}<div class="h-title">${dp&&isPoll(dp)?'투표':'게시판'}</div>${clkHTML()}`; }
+  else if(S.view==='poll') h=`<div class="h-title">투표</div>${clkHTML()}`;
+  else if(S.view==='hot') h=`<div class="h-title">인기 글</div>${clkHTML()}`;
+  else if(S.view==='mine') h=`<div class="h-title">나의 활동</div>${clkHTML()}`;
   else if(S.view==='search') h=`${back}<div class="h-title">${esc(S.q||'')}</div>`;
   else if(S.view==='mentions'){ const mp=DB.people.find(x=>x.id===S.ment);
     h=`${back}<div class="h-title">${esc(mp?mp.name:'언급된 글')}</div>`; }
@@ -2830,7 +2863,9 @@ function vStock(){
           <span class="c">${x.count}개</span></div>`).join('')}
       ${DB.sources.length>3?`<button class="more-btn" data-act="src-toggle">
         ${S.srcOpen?'접기':`이전 기록 ${DB.sources.length-3}개 더 보기`}</button>`:''}`;
-  const speed=`${slider('postGap',c.postGap,'글 올라오는 간격','다음 글이 게시판에 올라오기까지')}
+  const speed=`${slider('timeScale',c.timeScale,'캠퍼스 시간','현실보다 빨리 흐르는 사이트 안 시계')}
+      <div class="note" style="padding-top:0">지금은 ${esc(worldLabel())} · ${esc(todNow()[3])}</div>
+      ${slider('postGap',c.postGap,'글 올라오는 간격','다음 글이 게시판에 올라오기까지 (현실 시간)')}
       ${slider('commentGap',c.commentGap,'댓글 달리는 간격','한 글에 댓글이 하나씩 붙는 속도')}
       ${slider('replyDelay',c.replyDelay,'답글 지연','선택지를 누른 뒤 답글이 오기까지 (실제 초)')}
       <div class="row"><div class="k">시간대 반영
@@ -2881,7 +2916,7 @@ function vStock(){
       <div class="fld"><button class="btn danger" data-act="reset">데이터 초기화</button></div>`;
   return `<div class="pad">
     ${foldCard('import','글 불러오기',`대기 글 ${waiting} · 투표 ${pwait}`,load,true)}
-    ${foldCard('speed','공개 속도','간격 · 시간대 · 지금 공개',speed,false)}
+    ${foldCard('speed','공개 속도','캠퍼스 시계 · 간격 · 시간대',speed,false)}
     ${foldCard('replay','다시보기',`보관함 글 ${vaultWait(false)+vaultWait(true)}개`,replay,true)}
     ${foldCard('mkset','시장 운영','시세 · 매물 수 · 체결',market,false)}
     ${foldCard('backup','백업','파일 저장 · 복원 · 인물 옮기기',backup,false)}
