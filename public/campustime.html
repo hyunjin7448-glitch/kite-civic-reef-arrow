@@ -651,22 +651,28 @@ const DEFAULT_QTPL=`너는 한국 대학 익명 커뮤니티의 '투표(밸런�
 - 이미 {누적}개의 투표가 쌓여 있다. 겹치는 소재는 피해라.`;
 
 const DEFAULT_MARKET=[
-  {name:'김대현 교수가 쓰던 공학용 계산기', owner:'김대현 교수', price:1200, rarity:'희귀',
+  {title:'[거래] 공학용 계산기 팔아요', name:'김대현 교수가 쓰던 공학용 계산기', owner:'김대현 교수', price:1200, rarity:'희귀',
    traits:['전자기기','진지함'],
-   desc:'연구실 정리하면서 나왔다는 물건. 뒷면에 이름이 새겨져 있다.',
-   comments:['이게 올라오네','상태는 괜찮아 보이는데','연구실 물건이라 든든하다','이거 이 가격이었나','쓸 사람은 쓰겠지','뒷면에 이름 새겨진 거 실화냐','어제 살걸']},
-  {name:'과대 민지가 메던 에코백', owner:'과대 민지', price:800, rarity:'보통',
+   body:'연구실 정리하면서 나왔어요. 뒷면에 이름이 새겨져 있습니다.',
+   comments:[{text:'연구실 물건이라 든든하다',likes:6},{text:'뒷면에 이름 새겨진 거 실화냐',likes:4},
+             {text:'이거 이 가격이었나',likes:1}],
+   choices:[{text:'버튼이랑 액정 괜찮나요',replies:[{text:'둘 다 깨끗합니다',writer:true,likes:2}]},
+            {text:'전공 수업에서 쓸 만하겠죠',replies:[{text:'미적분이면 충분합니다',likes:3}]}]},
+  {title:'[거래] 과대 민지 에코백', name:'과대 민지가 메던 에코백', owner:'과대 민지', price:800, rarity:'보통',
    traits:['옷','허세'],
-   desc:'행사 끝나고 정리하다 나왔다. 안쪽에 과 로고 패치가 붙어 있다.',
-   comments:['에코백이네','과대 쓰던 거라 희소하다','안쪽에 패치 있다며','쓸 만해 보이긴 한다','행사용인가 보다','유니크한데 지금이네']},
-  {name:'조교 형이 놓고 간 텀블러', owner:'조교 형', price:500, rarity:'흔함',
+   body:'행사 끝나고 정리하다 나왔어요. 안쪽에 과 로고 패치 있습니다.',
+   comments:[{text:'과대 쓰던 거라 희소하다',likes:5},{text:'안쪽에 패치 있다며',likes:2}],
+   choices:[{text:'행사 몇 번 나갔어요?',replies:[{text:'작년 과 MT랑 OT요',writer:true}]}]},
+  {title:'[거래] 조교 형 텀블러', name:'조교 형이 놓고 간 텀블러', owner:'조교 형', price:500, rarity:'흔함',
    traits:['생활','낡음'],
-   desc:'과 사무실 싱크대 위에 한동안 있던 것. 스티커가 반쯤 벗겨져 있다.',
-   comments:['텀블러 하나 올라왔다','무난한 중고네','스티커 반쯤 벗겨졌대','과 사무실 냄새가 날 듯','쓸 사람은 있을 듯','이건 좀 오래됐다','그 텀블러 소문났었는데']},
-  {name:'김대현 교수 연구실 책상 스탠드', owner:'김대현 교수', price:1800, rarity:'보통',
+   body:'과 사무실 싱크대 위에 한동안 있던 겁니다. 스티커가 반쯤 벗겨져 있어요.',
+   comments:[{text:'무난한 중고네',likes:2},{text:'그 텀블러 소문났었는데',likes:7}],
+   choices:[{text:'물 새지는 않죠',replies:[{text:'안 샙니다',writer:true,likes:1}]}]},
+  {title:'[거래] 연구실 책상 스탠드', name:'김대현 교수 연구실 책상 스탠드', owner:'김대현 교수', price:1800, rarity:'보통',
    traits:['가구','쓸쓸함'],
-   desc:'자리 옮기면서 나왔다. 각도 조절되고 전구는 얼마 전에 갈았다.',
-   comments:['스탠드네','책상 위에 두면 될 듯','각도 조절된대','연구실 조명 괜찮다','무난해 보인다','전구는 갈았다고 함','중고 조명 처음 본다']}
+   body:'자리 옮기면서 나왔어요. 각도 조절되고 전구는 얼마 전에 갈았습니다.',
+   comments:[{text:'책상 위에 두면 될 듯',likes:3},{text:'중고 조명 처음 본다',likes:1}],
+   choices:[{text:'전구 규격 알려주세요',replies:[{text:'일반 LED입니다',writer:true}]}]}
 ];
 
 const DEFAULT_MTPL=`너는 한국 대학 익명 커뮤니티의 중고장터에 올라올 물품 데이터를 만든다.
@@ -675,25 +681,31 @@ const DEFAULT_MTPL=`너는 한국 대학 익명 커뮤니티의 중고장터에 
 {
   "market": [
     {
+      "title": "[거래] 공학용 계산기 팔아요",
+      "body": "연구실 정리하면서 나왔어요. 뒷면에 이름 새겨져 있습니다.",
+      "likes": 42,
+      "scraps": 5,
       "name": "김대현 교수가 쓰던 공학용 계산기",
       "owner": "김대현 교수",
       "price": 1200,
       "rarity": "희귀",
       "traits": ["전자기기", "진지함"],
-      "desc": "연구실 정리하면서 나왔다는 물건. 뒷면에 이름이 새겨져 있다.",
       "comments": [
-        "이게 올라오네",
-        "상태는 괜찮아 보이는데",
-        "연구실 물건이라 든든하다",
-        "이거 이 가격이었나",
-        "쓸 사람은 쓰겠지",
-        "어제 살걸"
+        { "text": "연구실 물건이라 든든하다", "likes": 6 },
+        { "text": "뒷면에 이름 새겨진 거 실화냐", "likes": 3 }
+      ],
+      "choices": [
+        {
+          "text": "상태 어떤가요",
+          "replies": [ { "text": "버튼 다 되고 액정 깨끗합니다", "writer": true } ]
+        }
       ]
     }
   ]
 }
 
 필드 규칙:
+- title — 반드시 "[거래] "로 시작해라. 게시판 제목처럼 담백하게.
 - owner — 아래 인물 목록에 있는 이름을 그대로 써라. 목록에 없는 인물을 지어내지 마라.
 - 물품은 인물 목록에서 골고루 배정해라. 한 사람에게 몰지 마라.
 - name — 누구 물건인지 드러나게. "OO의 OO" 형태가 아니어도 되지만 그 인물과 연결이 느껴져야 한다.
@@ -704,16 +716,14 @@ const DEFAULT_MTPL=`너는 한국 대학 익명 커뮤니티의 중고장터에 
   2번째 = 기운 하나: 천박함 / 허세 / 애잔함 / 진지함 / 귀여움 / 낡음 / 고급짐 / 민망함 / 과함 / 쓸쓸함
   목록 밖 단어를 만들지 마라. 한 묶음 안에서 종류·기운이 겹치지 않게 골고루 섞어라.
   예: 과한 패딩은 ["옷","과함"], 스티커 범벅 텀블러는 ["생활","천박함"], 밑줄 가득한 전공서는 ["교재","애잔함"].
-- desc — 한두 문장. 어떻게 시장에 나왔는지가 드러나면 좋다. 특성이 느껴져도 특성 단어를 문장에 그대로 박지 마라.
-- comments — 문자열 4~8개. 구경꾼이 물건을 보고 하는 혼잣말.
-  한 문장, 길어도 20자 안쪽. 물건과 상태에 대해 말한다. 시세가 올랐다거나 안 팔린다는 말은 쓰지 마라.
-  기운을 반영해라. 천박하면 비웃는 쪽이, 애잔하면 안쓰러운 쪽이 섞인다. 특성 단어를 댓글에 직접 쓰지 마라.
+- body — 한두 문장. 어떻게 나왔는지. 특성 단어를 문장에 그대로 박지 마라.
+- comments·choices — 게시글과 같은 형식. comments는 객체(text, likes, writer, reply). choices 3~4개, replies 1~2개.
+  시세가 올랐다거나 앱 버튼을 누르라는 말은 쓰지 마라.
 
 내용 규칙:
-- 댓글은 전부 구경꾼의 감상평이다. 사겠다거나 흥정하는 말은 절대 쓰지 마라.
-- 판매자에게 말을 거는 형태도 쓰지 마라. 혼잣말이나 옆사람에게 하는 말처럼.
-- 한 문장, 길어도 20자 안쪽. 이모지 금지.
-- 인물을 조롱하거나 인신공격하지 마라. 물건과 가격에 대해서만 말한다.
+- 거래 글의 댓글은 게시판 수다다. 물건·판매자에 대해 말해도 된다.
+- 이모지 금지. 느낌표는 항목 하나에 최대 하나.
+- 인물을 조롱하거나 인신공격하지 마라.
 - 대학생이 실제로 살 만한 물건이어야 한다. 교재, 전자기기, 의류, 생활용품, 취미용품 정도.
 - 실존 브랜드명은 쓰지 마라.
 
@@ -782,10 +792,10 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
 function fresh(){
   const market=seedMarket();
   return {
-    feed:DEFAULT_FEED.map(x=>x), sources:[{name:'기본 데이터',count:DEFAULT_FEED.length}],
+    feed:DEFAULT_FEED.map(x=>x).concat(market.map(asTradeFeed)), sources:[{name:'기본 데이터',count:DEFAULT_FEED.length+DEFAULT_MARKET.length}],
     posts:[], revealed:0, lastPostAt:0, clock:0, lastTick:Date.now(), pending:[], nextId:10,
     cfg:Object.assign({},CFG_DEF), tpl:null, ptpl:null, qtpl:null, mtpl:null,
-    market, listed:market.map(x=>x.id), owned:[], morders:[], credit:10000, trades:0, bestRoi:0, achs:[], marks:{},
+    market, listed:[], owned:[], morders:[], credit:10000, trades:0, bestRoi:0, achs:[], marks:{},
     polls:DEFAULT_POLLS.map(x=>x), prevealed:0, plastAt:0,
     vault:[], vrev:0, pvault:[], pvrev:0,
     people:[
@@ -882,6 +892,9 @@ function normalize(d){
   });
   const maxM=(d.market||[]).reduce((a,x)=>Math.max(a,+x.id||0),0);
   if(typeof d.nextId!=='number'||d.nextId<=maxM) d.nextId=Math.max(d.nextId||1,maxM+1);
+  const DB0=DB; DB=d;
+  try{ enqueueTrades(d.market||[]); }catch(e){}
+  DB=DB0;
   delete d.courses;
   return d;
 }
@@ -1000,11 +1013,13 @@ function srcOf(p){
   return (p.pk==='poll'?DB.polls:DB.feed)[p.fi]||null;
 }
 function spawnPost(f,due,poll,fi){
+  const trade=!!(f&&(f.trade||f.mid)&&!poll);
   const o={id:uid(), title:String(f.title||'(제목 없음)'), body:String(f.body||''),
     at:due, likes:+f.likes||0, liked:false, scraps:+f.scraps||0, scrapped:false,
     anon:f.anon!==false, author:null, image:imgOf(f), comments:[],
-    fi:fi==null?-1:fi, pk:poll?'poll':'feed', cn:0, cAt:due, cmap:[], used:[], myNo:0};
+    fi:fi==null?-1:fi, pk:poll?'poll':(trade?'trade':'feed'), cn:0, cAt:due, cmap:[], used:[], myNo:0};
   if(f.arc) o.arc=String(f.arc).slice(0,40);
+  if(trade){ o.mid=f.mid; o.title=tradeTitle(f); }
   if(fi==null||fi<0) o.src=f;
   if(poll){
     const opts=(f.options||[]).map(x=>String(x)).slice(0,4);
@@ -1016,6 +1031,7 @@ function spawnPost(f,due,poll,fi){
     o.myVote=null;
   }
   DB.posts.unshift(o);
+  if(o.pk==='trade') cycleMarket();
   return o;
 }
 function publishPost(i,due,poll){
@@ -1028,11 +1044,12 @@ function srcClone(p){
   let o;
   try{ o=f?JSON.parse(JSON.stringify(f)):null; }catch(e){ o=null; }
   if(!o) o={title:p.title, body:p.body, comments:[], choices:[]};
-  o.pk=p.pk==='poll'?'poll':'feed';
+  o.pk=p.pk==='poll'?'poll':(p.pk==='trade'?'trade':'feed');
   if(p.pk==='poll'){
     if(!Array.isArray(o.options)) o.options=(p.options||[]).slice();
     if(!Array.isArray(o.votes)) o.votes=(p.votes||[]).slice();
   }
+  if(p.pk==='trade'){ o.trade=1; o.mid=p.mid; }
   return o;
 }
 function vaultWait(poll){
@@ -1125,7 +1142,7 @@ function tick(){
   DB.lastTick=now;
   let ch=false, posted=false;
   const gap=Math.max(0.05,DB.cfg.postGap)*MIN*rate();
-  const has=k=>DB.posts.some(p=>p.pk===k);
+  const has=k=>DB.posts.some(p=>p.pk===k || (k==='feed'&&p.pk==='trade'));
   while(DB.revealed<DB.feed.length){
     const due = has('feed')? Math.max(DB.lastPostAt+gap, DB.clock-gap) : DB.clock;
     if(due>DB.clock) break;
@@ -1186,8 +1203,8 @@ function atBottom(){
     return (a.scrollHeight - a.scrollTop - a.clientHeight) < 40;
   return true;                                   // 스크롤이 없으면 이미 끝이다
 }
-function listView(){ return S.view==='feed'||S.view==='poll'||S.view==='market'; }
-function isMarketTab(){ return S.view==='market'; }
+function listView(){ return S.view==='feed'||S.view==='poll'; }
+function isMarketTab(){ return false; }
 function setRing(id,progress){
   const r=document.getElementById(id); if(!r) return;
   const q=Math.max(0,Math.min(1.4,progress));
@@ -1204,16 +1221,6 @@ function setPtr(h,txt,on){
   if(on) el.classList.add('on'); else el.classList.remove('on');
 }
 function pullLoad(){
-  if(isMarketTab()){
-    const el=document.getElementById('ptr');
-    if(el){ el.classList.add('load'); el.style.height=''; setPtr(58,'불러오는 중…',true); }
-    const b=document.getElementById('pullBox'), r=document.getElementById('pullRing');
-    if(r) r.style.transform='';
-    if(b) b.classList.add('load');
-    setPull('불러오는 중…',true);
-    setTimeout(publishMarket,600);
-    return;
-  }
   if(!DB||waitCount(isPollTab())<=0){
     setPtr(0,'',false); setPull(pullText(),false);
     return toast(isPollTab()?'쌓아둔 투표를 모두 봤습니다':'쌓아둔 글을 모두 봤습니다');
@@ -1243,7 +1250,6 @@ function marketWait(){
   return (DB.market||[]).filter(it=>!it.down&&!ownedOf(it.id)&&!orderOf(it.id)&&!listed.has(it.id)).length;
 }
 function pullArmedText(){
-  if(isMarketTab()) return '놓으면 시세를 새로고침합니다';
   return isPollTab()?'놓으면 새 투표가 올라옵니다':'놓으면 새 글이 올라옵니다';
 }
 function publishMarket(){
@@ -1450,7 +1456,7 @@ function addFeed(text,name){
   if(!items.length){
     if(added||madded){
       if(madded) refreshQuotes();
-      save(); render();
+      save(); tick(); render();
       return toast([added?`인물 ${added}명`:'', madded?`물품 ${madded}개`:''].filter(Boolean).join(' · ')+' 추가');
     }
     return toast('title이 있는 글이 하나도 없습니다');
@@ -1507,12 +1513,23 @@ function rxPool(it){
   return [];
 }
 function seedMarket(){
-  return DEFAULT_MARKET.map((x,i)=>({
-    id:i+1, name:x.name, owner:x.owner, price:x.price, rarity:x.rarity, desc:x.desc,
-    traits:(x.traits||[]).slice(),
-    comments:rxPool(x),
-    quote:x.price, hist:[{at:0,p:x.price}], backAt:0
-  }));
+  return DEFAULT_MARKET.map((x,i)=>{
+    const o={
+      id:i+1, name:x.name, owner:x.owner, price:x.price, rarity:x.rarity,
+      desc:x.body||x.desc, title:x.title,
+      traits:(x.traits||[]).slice(),
+      comments:rxPool(x),
+      quote:x.price, hist:[{at:0,p:x.price}], backAt:0,
+      src:{
+        title:tradeTitle(x), body:String(x.body||x.desc||''),
+        comments:asPostComments(x.comments),
+        choices:Array.isArray(x.choices)?x.choices:[],
+        likes:+x.likes||0, scraps:+x.scraps||0
+      }
+    };
+    if(x.arc) o.arc=x.arc;
+    return o;
+  });
 }
 function bump(k,n){
   if(!DB) return;
@@ -1523,30 +1540,88 @@ function nightBump(){
   const h=new Date().getHours();
   if(h>=21||h<7) bump('night');
 }
+function isTrade(p){ return !!(p&&p.pk==='trade'); }
+function tradeTitle(f){
+  let t=String((f&&f.title)||'').trim();
+  if(!t) t=String((f&&f.name)||'중고 물건');
+  t=t.replace(/^\[거래\]\s*/,'');
+  return '[거래] '+t;
+}
+function asPostComments(cs){
+  if(!Array.isArray(cs)) return [];
+  return cs.map(c=>{
+    if(typeof c==='string'){ const t=c.trim(); return t?{text:t}:null; }
+    if(c&&c.text) return c;
+    return null;
+  }).filter(Boolean);
+}
+function asTradeFeed(it){
+  const s=it.src||{};
+  return {
+    title:tradeTitle({title:s.title||it.title, name:it.name}),
+    body:String(s.body||it.body||it.desc||''),
+    likes:+s.likes||+it.likes||0,
+    scraps:+s.scraps||+it.scraps||0,
+    comments:asPostComments(s.comments||it.comments),
+    choices:Array.isArray(s.choices)?s.choices:(Array.isArray(it.choices)?it.choices:[]),
+    arc:it.arc, mid:it.id, trade:1, name:it.name, owner:it.owner
+  };
+}
+function tradePostOf(mid){
+  return (DB.posts||[]).find(p=>isTrade(p)&&String(p.mid)===String(mid));
+}
+function enqueueTrades(items){
+  let n=0;
+  (items||[]).forEach(it=>{
+    if(!it||it.id==null) return;
+    const has=(DB.feed||[]).some(f=>String(f.mid)===String(it.id))
+      || (DB.posts||[]).some(p=>isTrade(p)&&String(p.mid)===String(it.id));
+    if(has) return;
+    DB.feed.push(asTradeFeed(it));
+    n++;
+  });
+  return n;
+}
 function isMarketRow(f){
-  return !!(f&&typeof f==='object'&&f.name&&f.owner&&!f.title);
+  return !!(f&&typeof f==='object'&&f.owner&&(f.price!=null||f.name)
+    &&!(Array.isArray(f.options)&&f.options.length>=2));
 }
 function packMarket(it){
   let id=uid();
   while((DB.market||[]).some(x=>x.id===id)) id=uid();
-  return {
-    id, name:String(it.name||''), owner:String(it.owner||''),
+  const name=String(it.name||it.title||'').replace(/^\[거래\]\s*/,'');
+  const o={
+    id, name,
+    owner:String(it.owner||''),
     price:Math.max(1,+it.price||1000),
     rarity:['흔함','보통','희귀'].indexOf(it.rarity)>=0?it.rarity:'보통',
-    desc:String(it.desc||''),
+    desc:String(it.body||it.desc||''),
     traits:normTraits(it.traits),
     comments:rxPool(it),
-    quote:Math.max(1,+it.price||1000), hist:[], backAt:0
+    quote:Math.max(1,+it.price||1000), hist:[], backAt:0,
+    src:{
+      title:tradeTitle(it),
+      body:String(it.body||it.desc||''),
+      comments:asPostComments(it.comments),
+      choices:Array.isArray(it.choices)?it.choices:[],
+      likes:+it.likes||0, scraps:+it.scraps||0
+    }
   };
+  if(it.arc) o.arc=String(it.arc).slice(0,40);
+  return o;
 }
 function mergeMarket(arr){
-  let n=0;
+  let n=0; const packed=[];
   (arr||[]).forEach(it=>{
-    if(!it||!it.name) return;
-    if(DB.market.some(x=>x.name===it.name)) return;
-    DB.market.push(packMarket(it));
+    if(!it||!(it.name||it.title)) return;
+    const nm=String(it.name||it.title||'').replace(/^\[거래\]\s*/,'');
+    if(DB.market.some(x=>x.name===nm||x.name===it.name)) return;
+    const o=packMarket(it);
+    DB.market.push(o);
+    packed.push(o);
     n++;
   });
+  enqueueTrades(packed);
   return n;
 }
 function rarityVol(r){ return r==='희귀'?1.6:r==='흔함'?0.7:1; }
@@ -1610,40 +1685,25 @@ function shuffle(a){
   }
   return a;
 }
-function startListing(it){
-  const pool=rxPool(it);
-  let n=pool.length;
-  if(n>8) n=4+Math.floor(Math.random()*5);
-  it.rx=shuffle(pool.slice()).slice(0,n);
-  it.rxn=0;
-  it.rxAt=DB.clock||0;
-}
+function startListing(it){ /* 거래 글 댓글은 게시글 큐를 쓴다 */ }
 function cycleMarket(){
   if(!DB||!DB.market) return false;
   const blocked=id=>!!ownedOf(id)||!!orderOf(id);
-  let ch=false;
+  const live=new Set();
+  (DB.posts||[]).forEach(p=>{
+    if(!isTrade(p)||p.mid==null) return;
+    const it=marketOf(p.mid);
+    if(it&&!it.down&&!blocked(it.id)) live.add(String(it.id));
+  });
   const keep=[];
-  (DB.listed||[]).forEach(id=>{
+  live.forEach(id=>{
     const it=marketOf(id);
-    if(!it){ ch=true; return; }
-    if(it.down||blocked(id)){ ch=true; return; }
-    keep.push(id);
+    if(it) keep.push(it.id);
   });
-  const have=new Set(keep.map(String));
-  (DB.market||[]).forEach(it=>{
-    if(it.down||have.has(String(it.id))||blocked(it.id)) return;
-    keep.push(it.id);
-    have.add(String(it.id));
-    startListing(it);
-    ch=true;
-  });
-  if(keep.length!==(DB.listed||[]).length) ch=true;
+  const prev=(DB.listed||[]).map(String).join(',');
+  const next=keep.map(String).join(',');
   DB.listed=keep;
-  (DB.listed||[]).forEach(id=>{
-    const it=marketOf(id);
-    if(it && (!it.rx || it.rx.length<4)) startListing(it);
-  });
-  return ch;
+  return prev!==next;
 }
 function fillWait(side,price,quote){
   const q=Math.max(1,+quote||1), p=Math.max(1,+price||1);
@@ -1728,7 +1788,8 @@ function fillOrder(o){
   }
 }
 function placeOrder(side){
-  const it=marketOf(S.mitem); if(!it) return;
+  const it=marketOf(S.mitem)||(postOf(S.post)?marketOf(postOf(S.post).mid):null);
+  if(!it) return;
   if(orderOf(it.id)) return toast('이미 걸어 둔 주문이 있습니다');
   const q=typeof it.quote==='number'?it.quote:quoteOf(it);
   const price=parseMkPrice(q);
@@ -1798,52 +1859,34 @@ function mkOwners(list){
   });
   return out;
 }
-function vMarket(){
-  const all=(DB.listed||[]).map(marketOf).filter(Boolean);
-  const cat=S.mkCat||'';
-  const list=cat?all.filter(it=>it.owner===cat):all;
-  const mine=(DB.owned||[]).map(o=>marketOf(o.mid)).filter(Boolean);
-  const owners=mkOwners(all);
-  const bar=`<div class="cr-bar"><span class="k">중고장터 · 매물 ${all.length}</span><span class="v">${won(DB.credit)}</span></div>`;
-  const cats=`<div class="mk-cats">
-      <button class="mk-cat ${!cat?'on':''}" data-mkcat="*">전체<small>${all.length}</small></button>
-      ${owners.map(n=>`<button class="mk-cat ${cat===n?'on':''}" data-mkcat="${esc(n)}">${esc(n)}<small>${all.filter(it=>it.owner===n).length}</small></button>`).join('')}
-    </div>`;
-  const waits=(DB.morders||[]).map(o=>{
-    const it=marketOf(o.mid); if(!it) return '';
-    return mkRow(it, o.side==='buy'?'매수 대기':'매도 대기');
-  }).filter(Boolean);
-  let html=bar+cats;
-  if(!cat){
-    if(mine.length) html+=`<div class="sec" style="background:var(--card)">내 물건 ${mine.length}개</div>`+mine.map(it=>mkRow(it,'보유')).join('');
-    if(waits.length) html+=`<div class="sec" style="background:var(--card)">주문 대기 ${waits.length}건 · 취소 불가</div>`+waits.join('');
-  }
-  html+=`<div class="sec" style="background:var(--card)">${cat?esc(cat)+'의 매물':'전체 매물'} ${list.length}개</div>`;
-  if(!list.length) html+=`<div class="empty">${cat?'이 인물의 매물이 없습니다.':(mine.length?'시장에 나온 매물이 없습니다.':'올라온 매물이 없습니다.')}</div>`;
-  else html+=list.map(it=>mkRow(it)).join('');
-  return ptrHTML()+html+pullBtn();
+function vMarket(){ S.view='feed'; S.tab='feed'; return vFeed(); }
+function tradeBox(p){
+  const it=marketOf(p.mid); if(!it) return '';
+  const q=typeof it.quote==='number'?it.quote:quoteOf(it);
+  return `<div class="mk-trade">
+    ${traitHTML(it)}
+    <div class="mk-price" style="color:var(--red);font-size:20px">${won(q)} 크레딧</div>
+    <div class="mk-own">${esc(it.owner||'판매자')} · 기준가 ${won(it.price)} · 내 잔고 ${won(DB.credit)}</div>
+    ${mkTradeHTML(it,q)}
+  </div>`;
 }
 function vMItem(){
   const it=marketOf(S.mitem);
-  if(!it){ S.view='market'; S.tab='market'; return vMarket(); }
+  if(!it){ S.view='feed'; S.tab='feed'; return vFeed(); }
+  const p=tradePostOf(it.id);
+  if(p){ S.post=p.id; S.view='detail'; return vDetail(); }
   const q=typeof it.quote==='number'?it.quote:quoteOf(it);
-  const km=kindMark(it);
-  return `<div class="d-wrap" style="padding-top:0">
-    <div class="mk-th ${km.k}" style="height:132px;margin:0 -14px 16px">${esc(km.t)}</div>
-    <div class="d-head">
-      <span class="avatar">₩</span>
-      <div><div class="d-who">${esc(it.owner||'')}</div>
-        <div class="d-sub"><span class="rarity ${rarityClass(it.rarity)}">${esc(it.rarity||'보통')}</span>판매자</div></div>
-    </div>
-    <h1 class="d-title">${esc(it.name)}</h1>
+  return `<div class="d-wrap">
+    <div class="d-head"><span class="avatar">?</span>
+      <div><div class="d-who">익명</div>
+        <div class="d-sub">${esc(it.owner||'판매자')}</div></div></div>
+    <h1 class="d-title">${esc(tradeTitle(it))}</h1>
     ${it.desc?`<div class="d-body">${esc(it.desc)}</div>`:''}
     ${traitHTML(it)}
-    <div class="mk-price" style="margin-top:18px;color:var(--red);font-size:22px">${won(q)} 크레딧</div>
-    ${quoteChgHTML(it)}
-    <div class="mk-own" style="margin-top:10px">기준가 ${won(it.price)} 크레딧 · 보유 ${won(DB.credit)}</div>
+    <div class="mk-price" style="margin-top:14px;color:var(--red);font-size:20px">${won(q)} 크레딧</div>
+    <div class="mk-own">기준가 ${won(it.price)} · 내 잔고 ${won(DB.credit)}</div>
     ${mkTradeHTML(it,q)}
-  </div>
-  ${rxHTML(it)}`;
+  </div>`;
 }
 function rxHTML(it){
   if(!onShelf(it.id)) return '';
@@ -1929,7 +1972,7 @@ const ACHS=[
   {id:'hand', t:0, name:'손 들어볼게요', hint:'투표에 한 표를 던졌다', test:s=>s.votes>=1},
   {id:'clip', t:0, name:'나중에 볼게요', hint:'글을 하나 스크랩했다', test:s=>s.scraps>=1},
   {id:'night', t:0, name:'밤샘 눈팅', hint:'밤이나 새벽에 한 번 반응했다', test:s=>mk(s,'night')},
-  {id:'look', t:0, name:'장터 기웃', hint:'시장 탭을 열었다', test:s=>mk(s,'tabm')},
+  {id:'look', t:0, name:'장터 기웃', hint:'거래 글을 열었다', test:s=>mk(s,'look')},
   {id:'pick', t:1, name:'고른 말이 곧 나', hint:'선택지로 말을 골랐다', test:s=>s.picks>=1},
   {id:'face', t:1, name:'얼굴은 알고', hint:'인물 한 명에게 관심을 보였다', test:s=>s.iN>=1},
   {id:'bag', t:1, name:'에코백에 넣음', hint:'장터에서 물건을 샀다', test:s=>s.trades>=1||s.owned>=1},
@@ -2063,6 +2106,8 @@ function achListHTML(){
 /* ===================== 렌더 ===================== */
 let lastView=null;
 function render(){
+  if(S.tab==='market') S.tab='feed';
+  if(S.view==='market') S.view='feed';
   const app=$('#app');
   const same=(lastView===S.view);
   const keepTop=same?app.scrollTop:0;
@@ -2110,7 +2155,7 @@ function renderHeader(){
   $('#hdr').innerHTML=h;
 }
 function renderNav(){
-  const items=[['feed','☰','게시판'],['poll','🗳','투표'],['hot','✦','인기'],['mine','◔','나의'],['people','◍','인물'],['market','₩','시장']];
+  const items=[['feed','☰','게시판'],['poll','🗳','투표'],['hot','✦','인기'],['mine','◔','나의'],['people','◍','인물']];
   $('#nav').innerHTML=items.map(([k,i,l])=>
     `<button data-tab="${k}" class="${S.tab===k?'on':''}"><i>${i}</i>${l}</button>`).join('');
 }
@@ -2124,7 +2169,7 @@ function ptrHTML(){
     <span id="ptrTxt">당겨서 새로고침</span></div>`;
 }
 function pullBtn(){
-  const none=isMarketTab()?!(DB.market||[]).length:waitCount(isPollTab())<=0;
+  const none=waitCount(isPollTab())<=0;
   return `<button class="pull ${none?'empty':''}" id="pullBox" data-act="pull-load">
     <span class="ring" id="pullRing" style="${none?'opacity:.3':''}"></span>
     <span id="pullTxt">${pullText()}</span></button>`;
@@ -2156,11 +2201,6 @@ function waitCount(poll){
 }
 function pullText(){
   if(!DB) return '';
-  if(isMarketTab()){
-    const n=marketWait();
-    if(n<=0) return '당겨서 시세 새로고침';
-    return `당기거나 눌러서 매물 불러오기 (대기 ${n}개)`;
-  }
   const poll=isPollTab();
   const n=waitCount(poll);
   if(n<=0) return poll?'쌓아둔 투표를 모두 봤습니다':'쌓아둔 글을 모두 봤습니다';
@@ -2208,7 +2248,7 @@ function vMine(){
       ${bag.length?bag.map(x=>`<button class="mrow" data-item="${x.it.id}">
           <div class="txt" style="font-weight:700">${esc(x.it.name)}</div>
           <div class="tm">${esc(x.it.owner||'')} · 산 값 ${won(x.o.cost)} · 지금 ${won(x.q)}</div></button>`).join('')
-        :`<div class="note" style="color:var(--faint)">시장에서 물건을 사면 여기에 쌓입니다.</div>`}
+        :`<div class="note" style="color:var(--faint)">거래 글에서 물건을 사면 여기에 쌓입니다.</div>`}
       ${waits.length?`<div class="sec" style="padding-top:6px">구매 대기 ${waits.length}건</div>`+
         waits.map(w=>{
           const it=marketOf(w.mid);
@@ -2291,6 +2331,7 @@ function vDetail(){
       <div class="d-body">${esc(p.body)}</div>
       ${p.image?`<div class="shot"><i>📷</i>${esc(p.image)}</div>`:''}
       ${isPoll(p)?pollHTML(p):''}
+      ${isTrade(p)?tradeBox(p):''}
       <div class="d-actions">
         <button class="pill ${p.liked?'on':''}" data-like="${p.id}">♡ 공감 ${p.likes}</button>
         <button class="pill ${p.scrapped?'on':''}" data-scrap="${p.id}">☆ 스크랩 ${p.scraps}</button>
@@ -2867,12 +2908,16 @@ document.addEventListener('click',e=>{
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
-    if(d.tab==='market') bump('tabm');
     if(d.tab==='hot') bump('tabh');
     if(d.tab==='people') bump('tabp');
     nav(d.tab,d.tab); checkAchs(); return;
   }
-  if(d.open){ S.post=+d.open; S.replyTo=null; return nav('detail'); }
+  if(d.open){
+    S.post=+d.open; S.replyTo=null;
+    const p=postOf(S.post);
+    if(p&&isTrade(p)){ S.mitem=p.mid; bump('look'); }
+    return nav('detail');
+  }
   if(d.mkcat){
     S.mkCat=d.mkcat==='*'?'':d.mkcat;
     return render();
@@ -2881,7 +2926,10 @@ document.addEventListener('click',e=>{
     const raw=d.item;
     const id=(raw!=='' && +raw===+raw && String(+raw)===String(raw))?+raw:raw;
     if(String(S.mitem)!==String(id)) S.mkPrice='';
-    S.mitem=id; bump('look'); return nav('mitem');
+    S.mitem=id; bump('look');
+    const p=tradePostOf(id);
+    if(p){ S.post=p.id; S.replyTo=null; return nav('detail'); }
+    return nav('mitem');
   }
   if(d.choice){ const a=d.choice.split(':'); return chooseReply(+a[0],+a[1]); }
   if(d.vote){
