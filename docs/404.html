@@ -168,16 +168,43 @@
   .tl-row .st{font-size:11px;color:var(--faint);flex-shrink:0}
   .tl-row.on .st{color:var(--accent);font-weight:700}
   .tl-row .x{border:0;background:none;color:var(--faint);font-size:16px;padding:0 4px}
-  .cal-nav{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px}
-  .cal-nav b{font-size:15px;font-weight:800;letter-spacing:-.02em}
-  .cal-wk,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0 6px 8px}
-  .cal-wk span{text-align:center;font-size:11px;color:var(--faint);font-weight:700;padding:4px 0}
-  .cal-d{position:relative;border:0;background:none;padding:9px 0 14px;font-size:13px;font-weight:700;border-radius:8px}
-  .cal-d.on{background:var(--red-dim);color:var(--red)}
-  .cal-d.mute{color:var(--faint);font-weight:600}
-  .cal-d .dot{position:absolute;left:50%;bottom:5px;width:5px;height:5px;border-radius:50%;background:var(--red);transform:translateX(-50%)}
-  .cal-ev{display:flex;gap:8px;align-items:flex-start;padding:10px 14px;border-top:1px solid var(--line);text-align:left;width:100%;background:none}
-  .cal-ev .tt{flex:1;font-size:13px;font-weight:700;line-height:1.4}
+  .cal-page{background:var(--card);min-height:100%;padding-bottom:8px}
+  .cal-top{display:flex;align-items:center;gap:4px;padding:8px 8px 4px}
+  .cal-top b{flex:1;text-align:center;font-size:16.5px;font-weight:800;letter-spacing:-.03em}
+  .cal-today{flex:0 0 auto;font-size:12px;font-weight:800;color:var(--red);padding:6px 10px;border-radius:8px}
+  .cal-today:active{background:var(--red-dim)}
+  .cal-wk{display:grid;grid-template-columns:repeat(7,1fr);padding:4px 0 0;border-bottom:1px solid var(--line)}
+  .cal-wk span{text-align:center;font-size:11px;font-weight:700;color:var(--faint);padding:6px 0}
+  .cal-wk span:first-child{color:#E07070}
+  .cal-wk span:last-child{color:#5B8FD9}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--line)}
+  .cal-cell{min-height:78px;padding:4px 3px 3px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+    display:flex;flex-direction:column;align-items:stretch;gap:2px;background:#fff;text-align:left;overflow:hidden}
+  .cal-cell:nth-child(7n){border-right:0}
+  .cal-cell .dn{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+    font-size:11.5px;font-weight:700;flex:0 0 auto}
+  .cal-cell.sun .dn{color:#E07070}
+  .cal-cell.sat .dn{color:#5B8FD9}
+  .cal-cell.mute{background:#FAFBFC}
+  .cal-cell.mute .dn{color:var(--faint);font-weight:600}
+  .cal-cell.today .dn{background:var(--red);color:#fff}
+  .cal-cell.on{background:#FFF8F7;box-shadow:inset 0 0 0 2px var(--red)}
+  .cal-cell.in{background:#FDECEA}
+  .cal-cell.in.on{background:#FDECEA}
+  .cal-chips{display:flex;flex-direction:column;gap:2px;min-height:0}
+  .cal-chip{display:block;font-size:9.5px;font-weight:800;line-height:1.25;border-radius:4px;
+    padding:2px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.02em}
+  .cal-chip.more{background:#EEF0F3;color:#5B6570}
+  .cal-body{padding:12px 14px 8px}
+  .cal-range{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .cal-range .pill-d{flex:1;border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left;background:#fff}
+  .cal-range .pill-d.on{border-color:var(--red);background:var(--red-dim)}
+  .cal-range .pill-d small{display:block;font-size:10.5px;font-weight:700;color:var(--faint);margin-bottom:3px}
+  .cal-range .pill-d b{display:block;font-size:13.5px;font-weight:800}
+  .cal-range .arr{color:var(--faint);font-size:14px;flex:0 0 auto}
+  .cal-ev{display:flex;gap:8px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line);text-align:left;width:100%;background:none}
+  .cal-ev .sw{width:8px;height:8px;border-radius:50%;flex:0 0 auto;margin-top:6px}
+  .cal-ev .tt{flex:1;font-size:13.5px;font-weight:700;line-height:1.4}
   .cal-ev .tm{display:block;font-size:11.5px;font-weight:600;color:var(--faint);margin-top:3px}
   .cal-ev .x{border:0;background:none;color:var(--faint);font-size:16px;padding:0 2px}
 
@@ -935,7 +962,7 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
   qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,atplEdit:false,atplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
   backupText:'',ppaste:'',gpaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
   playing:false,cover:'in',
-  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',
+  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,
   fold:{import:1,make:1},
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
@@ -2319,12 +2346,19 @@ function calEnsure(){
   if(!S.calM) S.calM=w.getMonth()+1;
   if(!S.calDay) S.calDay=ymd(w.getFullYear(), w.getMonth()+1, w.getDate());
 }
+function calToday(){
+  const w=worldDate();
+  S.calY=w.getFullYear(); S.calM=w.getMonth()+1;
+  S.calDay=ymd(S.calY,S.calM,w.getDate());
+  S.calPick=0;
+  render();
+}
 function calAdd(){
   const el=$('#calText'); const text=String(S.calDraft||(el&&el.value)||'').trim();
-  if(!text) return toast('사건을 적어 주세요');
+  if(!text) return toast('일정을 적어 주세요');
   calEnsure();
   const from=S.calDay;
-  let to=(($('#calTo')||{}).value||S.calTo||'').trim()||from;
+  let to=S.calTo||from;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(to)) to=from;
   if(to<from) to=from;
   let a=0, b=24;
@@ -2335,9 +2369,9 @@ function calAdd(){
   DB.cal=DB.cal||[];
   DB.cal.push({id:uid(), from, to, a, b, text, pct:Math.max(5, Math.min(50, +S.g.evPct||20))});
   if(el) el.value='';
-  S.calDraft=''; S.calTo='';
+  S.calDraft=''; S.calPick=0;
   save(); render();
-  toast(from===to?from+' 사건을 넣었습니다':from+'~'+to+' 사건을 넣었습니다');
+  toast(from===to?'하루 일정을 넣었습니다':from+'~'+to+' 일정을 넣었습니다');
 }
 function calDel(id){
   DB.cal=(DB.cal||[]).filter(x=>String(x.id)!==String(id));
@@ -2345,60 +2379,106 @@ function calDel(id){
 }
 function calWhen(e){
   const hours=(e.a===0&&e.b>=24)?'종일':e.a+'시~'+e.b+'시';
-  if(!e.to || e.to===e.from) return e.from+' · '+hours;
-  return e.from+'~'+e.to+' · '+hours;
+  if(!e.to || e.to===e.from) return hours;
+  const a=parseYmd(e.from), b=parseYmd(e.to||e.from);
+  return (a?a.m+'/'+a.d:'')+'–'+(b?b.m+'/'+b.d:'')+' · '+hours;
+}
+function calColor(e){
+  const pal=[['#FCE4EC','#C2185B'],['#E8F5E9','#2E7D32'],['#E3F2FD','#1565C0'],
+    ['#FFF8E1','#F9A825'],['#F3E5F5','#7B1FA2'],['#E0F2F1','#00695C']];
+  let h=0; const s=String(e.id||e.text||'');
+  for(let i=0;i<s.length;i++) h=(h*33+s.charCodeAt(i))>>>0;
+  return pal[h%pal.length];
+}
+function calLbl(day){
+  const p=parseYmd(day); if(!p) return '';
+  const w=new Date(p.y,p.m-1,p.d).getDay();
+  return p.m+'월 '+p.d+'일 ('+'일월화수목금토'[w]+')';
+}
+function calMonthCells(y,m){
+  const first=new Date(y,m-1,1);
+  const start=first.getDay();
+  const days=new Date(y,m,0).getDate();
+  const cells=[];
+  for(let i=0;i<start;i++){
+    const dt=new Date(y,m-1, i-start+1);
+    cells.push({y:dt.getFullYear(), m:dt.getMonth()+1, d:dt.getDate(), mute:1, w:dt.getDay()});
+  }
+  for(let d=1;d<=days;d++) cells.push({y,m,d, mute:0, w:new Date(y,m-1,d).getDay()});
+  while(cells.length%7){
+    const i=cells.length-start-days+1;
+    const dt=new Date(y,m,i);
+    cells.push({y:dt.getFullYear(), m:dt.getMonth()+1, d:dt.getDate(), mute:1, w:dt.getDay()});
+  }
+  return cells;
 }
 function calHTML(){
   calEnsure();
   const y=S.calY, m=S.calM;
-  const first=new Date(y, m-1, 1);
-  const start=first.getDay();
-  const days=new Date(y, m, 0).getDate();
-  const cells=[];
-  for(let i=0;i<start;i++) cells.push(null);
-  for(let d=1;d<=days;d++) cells.push(d);
-  while(cells.length%7) cells.push(null);
+  const cells=calMonthCells(y,m);
   const sel=S.calDay;
-  const hits=new Set();
-  (DB.cal||[]).forEach(e=>{
-    const from=parseYmd(e.from), to=parseYmd(e.to||e.from);
-    if(!from) return;
-    const a=new Date(from.y,from.m-1,from.d);
-    const b=new Date((to||from).y,(to||from).m-1,(to||from).d);
-    for(let dt=new Date(a); dt<=b; dt.setDate(dt.getDate()+1)){
-      if(dt.getFullYear()===y && dt.getMonth()+1===m) hits.add(dt.getDate());
-    }
-  });
-  const dayEvs=calOnDay(sel);
+  const end=S.calTo&&S.calTo>=sel?S.calTo:sel;
+  const w=worldDate();
+  const today=ymd(w.getFullYear(), w.getMonth()+1, w.getDate());
   const slotLab=['0~6','6~12','12~18','18~24'];
-  return `<div class="note">날짜를 눌러 캠퍼스 일정을 넣습니다. 그 날·구간의 글 프롬프트에 자동으로 붙습니다.</div>
-      <div class="cal-nav">
+  const dayEvs=calOnDay(sel);
+  return `<div class="cal-page">
+      <div class="cal-top">
         <button type="button" class="icon-btn" data-cnav="-1" aria-label="이전 달">‹</button>
         <b>${y}년 ${m}월</b>
+        <button type="button" class="cal-today" data-act="cal-today">오늘</button>
         <button type="button" class="icon-btn" data-cnav="1" aria-label="다음 달">›</button>
       </div>
       <div class="cal-wk">${'일월화수목금토'.split('').map(x=>`<span>${x}</span>`).join('')}</div>
-      <div class="cal-grid">${cells.map(d=>{
-        if(!d) return `<span></span>`;
-        const day=ymd(y,m,d);
-        return `<button type="button" class="cal-d ${day===sel?'on':''}" data-cday="${day}">${d}${hits.has(d)?'<i class="dot"></i>':''}</button>`;
+      <div class="cal-grid">${cells.map(c=>{
+        const day=ymd(c.y,c.m,c.d);
+        const evs=calOnDay(day);
+        const extra=Math.max(0, evs.length-3);
+        const show=evs.slice(0,3);
+        const cls=['cal-cell',
+          c.w===0?'sun':'', c.w===6?'sat':'',
+          c.mute?'mute':'',
+          day===today?'today':'',
+          day===sel?'on':'',
+          (day>sel&&day<=end)?'in':''
+        ].filter(Boolean).join(' ');
+        return `<button type="button" class="${cls}" data-cday="${day}">
+          <span class="dn">${c.d}</span>
+          <span class="cal-chips">${show.map(e=>{
+            const col=calColor(e);
+            return `<span class="cal-chip" style="background:${col[0]};color:${col[1]}">${esc(e.text)}</span>`;
+          }).join('')}${extra?`<span class="cal-chip more">+${extra}개 더</span>`:''}</span>
+        </button>`;
       }).join('')}</div>
-      <div class="sec">${sel} 사건 ${dayEvs.length}건</div>
-      ${dayEvs.map(e=>`<div class="cal-ev">
-        <span class="tt">${esc(e.text)}<span class="tm">${esc(calWhen(e))} · 화제성 ${e.pct||20}%</span></span>
-        <button type="button" class="x" data-act="cal-del" data-cal="${e.id}" aria-label="삭제">×</button>
-      </div>`).join('')}
-      <div class="fld"><label>사건</label>
-        <textarea class="ta" id="calText" style="min-height:70px" placeholder="한 줄. 예: 대동제 첫째 날, 중도 정전">${esc(S.calDraft||'')}</textarea></div>
-      <div class="fld"><label>끝나는 날 (비우면 하루)</label>
-        <input id="calTo" placeholder="${sel}" value="${esc(S.calTo||'')}"></div>
-      <div class="row"><div class="k">시간<small>하루 전체거나 구간만</small></div></div>
-      <div class="mk-cats" style="padding:4px 0 10px;border:0;background:none">
-        <button type="button" class="mk-cat ${S.calSlot==='all'?'on':''}" data-cslot="all">종일</button>
-        ${SLOTS.map((s,i)=>`<button type="button" class="mk-cat ${String(S.calSlot)===String(i)?'on':''}" data-cslot="${i}">${slotLab[i]}</button>`).join('')}
+      <div class="cal-body">
+        <div class="sec" style="padding:0 0 8px">${calLbl(sel)} · ${dayEvs.length}건</div>
+        ${dayEvs.map(e=>{
+          const col=calColor(e);
+          return `<div class="cal-ev">
+            <span class="sw" style="background:${col[1]}"></span>
+            <span class="tt">${esc(e.text)}<span class="tm">${esc(calWhen(e))} · 화제성 ${e.pct||20}%</span></span>
+            <button type="button" class="x" data-act="cal-del" data-cal="${e.id}" aria-label="삭제">×</button>
+          </div>`;
+        }).join('')||'<div class="note" style="padding:4px 0 10px">이 날 일정이 없습니다.</div>'}
+        <div class="sec" style="padding:12px 0 8px">새 일정</div>
+        <div class="cal-range">
+          <button type="button" class="pill-d ${S.calPick?'':'on'}" data-act="cal-pickfrom">
+            <small>시작</small><b>${calLbl(sel)}</b></button>
+          <span class="arr">→</span>
+          <button type="button" class="pill-d ${S.calPick?'on':''}" data-act="cal-pickto">
+            <small>${S.calPick?'끝나는 날을 누르세요':'끝'}</small>
+            <b>${S.calTo&&S.calTo!==sel?calLbl(S.calTo):'하루'}</b></button>
+        </div>
+        <div class="fld"><label>내용</label>
+          <textarea class="ta" id="calText" style="min-height:64px" placeholder="예: 대동제 첫째 날, 중도 정전">${esc(S.calDraft||'')}</textarea></div>
+        <div class="mk-cats" style="padding:4px 0 10px;border:0;background:none">
+          <button type="button" class="mk-cat ${S.calSlot==='all'?'on':''}" data-cslot="all">종일</button>
+          ${SLOTS.map((s,i)=>`<button type="button" class="mk-cat ${String(S.calSlot)===String(i)?'on':''}" data-cslot="${i}">${slotLab[i]}</button>`).join('')}
+        </div>
+        ${slider('evPct',S.g.evPct||'20','화제성','이 일정이 드러나는 글 비율')}
+        <div class="fld"><button class="btn" data-act="cal-add">일정 추가</button></div>
       </div>
-      ${slider('evPct',S.g.evPct||'20','화제성','이 사건이 드러나는 글 비율')}
-      <div class="fld"><button class="btn" data-act="cal-add">이 날 사건으로 저장</button></div>`;
+    </div>`;
 }
 function rangeStamp(){
   const t=hourBand();
@@ -2715,7 +2795,7 @@ function vMine(){
   </div>`;
 }
 function vCal(){
-  return `<div class="pad"><div class="card">${calHTML()}</div></div>`;
+  return calHTML();
 }
 function arcHTML(p){
   if(!p.arc) return '';
@@ -3352,9 +3432,20 @@ document.addEventListener('click',e=>{
     return;
   }
   if(d.cday){
-    S.calDay=d.cday;
     const p=parseYmd(d.cday);
-    if(p){ S.calY=p.y; S.calM=p.m; }
+    if(p){
+      if(S.calPick){
+        S.calTo=d.cday;
+        if(S.calTo<S.calDay){ const t=S.calDay; S.calDay=S.calTo; S.calTo=t; }
+        if(S.calTo===S.calDay) S.calTo='';
+        S.calPick=0;
+        S.calY=p.y; S.calM=p.m;
+      }else{
+        S.calDay=d.cday;
+        S.calY=p.y; S.calM=p.m;
+        if(S.calTo && S.calTo<S.calDay) S.calTo='';
+      }
+    }
     return render();
   }
   if(d.cnav){
@@ -3427,6 +3518,9 @@ document.addEventListener('click',e=>{
     case 'tl-add': tlAdd(); break;
     case 'cal-add': calAdd(); break;
     case 'cal-del': calDel(d.cal); break;
+    case 'cal-today': calToday(); break;
+    case 'cal-pickto': S.calPick=1; render(); toast('끝나는 날을 달력에서 누르세요'); break;
+    case 'cal-pickfrom': S.calPick=0; S.calTo=''; render(); break;
     case 'go-stock': nav('stock'); break;
     case 'enter': enterCampus(); break;
     case 'leave': leaveCampus(); break;
@@ -3576,7 +3670,6 @@ function keepInput(e){
   else if(id==='atplBox') S.atplDraft=e.target.value;
   else if(id==='evBox') S.g.ev=e.target.value;
   else if(id==='calText') S.calDraft=e.target.value;
-  else if(id==='calTo') S.calTo=e.target.value;
   else if(id==='mkPrice') S.mkPrice=e.target.value;
   else if(id==='ppaste') S.ppaste=e.target.value;
   else if(GMAP[id]) S.g[GMAP[id]]=e.target.value;
