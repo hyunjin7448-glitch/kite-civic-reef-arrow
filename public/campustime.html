@@ -280,6 +280,9 @@
   /* 투표 */
   .vbadge{display:inline-block;font-size:10px;font-weight:800;color:var(--red);background:var(--red-dim);
     border-radius:5px;padding:2px 6px;margin-right:6px;vertical-align:2px}
+  .tbadge{display:inline-block;font-size:10.5px;font-weight:800;color:#fff;background:var(--red);
+    border-radius:4px;padding:2px 7px;margin-right:6px;vertical-align:2px;letter-spacing:-.02em;
+    line-height:1.4}
   .poll{margin-top:15px;display:flex;flex-direction:column;gap:8px}
   .opt{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:12px;
     padding:13px 14px;font-size:14.5px;font-weight:600;background:#fff;position:relative;overflow:hidden}
@@ -1829,6 +1832,13 @@ function nightBump(){
   if(h>=21||h<7) bump('night');
 }
 function isTrade(p){ return !!(p&&p.pk==='trade'); }
+function bareTitle(t){ return String(t||'').replace(/^\[거래\]\s*/,''); }
+function titleHTML(p){
+  if(!p) return '';
+  const mark=isTrade(p)?'<span class="tbadge">거래</span>':(isPoll(p)?'<span class="vbadge">투표</span>':'');
+  const arc=p.arc?`<span class="arc-chip">${esc(p.arc)}</span>`:'';
+  return mark+arc+esc(bareTitle(p.title));
+}
 function tradeTitle(f){
   let t=String((f&&f.title)||'').trim();
   if(!t) t=String((f&&f.name)||'중고 물건');
@@ -2127,7 +2137,7 @@ function vMItem(){
     <div class="d-head"><span class="avatar">?</span>
       <div><div class="d-who">익명</div>
         <div class="d-sub">${esc(it.owner||'판매자')}</div></div></div>
-    <h1 class="d-title">${esc(tradeTitle(it))}</h1>
+    <h1 class="d-title"><span class="tbadge">거래</span>${esc(bareTitle(it.name||it.title||''))}</h1>
     ${it.desc?`<div class="d-body">${esc(it.desc)}</div>`:''}
     ${traitHTML(it)}
     <div class="mk-price" style="margin-top:14px;color:var(--red);font-size:20px">${won(q)} 크레딧</div>
@@ -2599,7 +2609,7 @@ function renderHeader(){
     ${clkHTML()}
     <button class="icon-btn quiet" data-act="go-settings" aria-label="더보기">•••</button>`;
   else if(S.view==='detail'){ const dp=postOf(S.post);
-    h=`${back}<div class="h-title">${dp&&isPoll(dp)?'투표':'게시판'}</div>${clkHTML()}`; }
+    h=`${back}<div class="h-title">${dp&&isTrade(dp)?'거래':dp&&isPoll(dp)?'투표':'게시판'}</div>${clkHTML()}`; }
   else if(S.view==='hot') h=`<div class="h-title">인기 글</div>${clkHTML()}`;
   else if(S.view==='mine') h=`<div class="h-title">나의 활동</div>${clkHTML()}`;
   else if(S.view==='search') h=`${back}<div class="h-title">${esc(S.q||'')}</div>`;
@@ -2641,8 +2651,7 @@ function listOf(list,emptyMsg){
       <span class="p-who">${p.anon?'익명':esc(p.author||'나')}</span>
       <span class="p-time">· ${ago(p.at)}</span></div>
     <div class="p-main"><div class="p-txt">
-      <div class="p-title">${isPoll(p)?'<span class="vbadge">투표</span>':''}${
-        p.arc?`<span class="arc-chip">${esc(p.arc)}</span>`:''}${esc(p.title)}</div>
+      <div class="p-title">${titleHTML(p)}</div>
       ${p.body?`<div class="p-body">${esc(p.body)}</div>`:''}
       ${isPoll(p)?`<div class="opt-min">${p.options.map(o=>`<span>${esc(o)}</span>`).join('')}</div>`:''}
       </div>
@@ -2669,7 +2678,7 @@ function vHot(){
   return `<div class="sec" style="background:var(--card)">공감·댓글·스크랩을 합산한 순위입니다</div>`
     + list.map((p,i)=>`<button class="hot-row" data-open="${p.id}">
       <span class="rank ${i<3?'top':''}">${i+1}</span>
-      <span class="hot-b"><span class="hot-t">${isPoll(p)?'<span class="vbadge">투표</span>':''}${esc(p.title)}</span>
+      <span class="hot-b"><span class="hot-t">${titleHTML(p)}</span>
         <span class="hot-m">♡ ${p.likes} · 💬 ${cCount(p)} · ☆ ${p.scraps} · ${ago(p.at)}</span></span>
       </button>`).join('');
 }
@@ -2721,7 +2730,7 @@ function vMine(){
     <div class="card" style="margin-top:10px">
       <div class="sec">스크랩</div>
       ${scrap.length?scrap.map(p=>`<button class="mrow" data-open="${p.id}">
-          <div class="txt" style="font-weight:700">${esc(p.title)}</div>
+          <div class="txt" style="font-weight:700">${titleHTML(p)}</div>
           <div class="tm">♡ ${p.likes} · 💬 ${cCount(p)} · ${ago(p.at)}</div></button>`).join('')
         :`<div class="note" style="color:var(--faint)">스크랩한 글이 없습니다.</div>`}
     </div>
@@ -2780,7 +2789,7 @@ function vDetail(){
       <div class="d-head"><span class="avatar">${p.anon?'?':'나'}</span>
         <div><div class="d-who">${p.anon?'익명':esc(p.author||'나')}</div>
         <div class="d-sub">${ago(p.at)}</div></div></div>
-      <h1 class="d-title">${esc(p.title)}</h1>
+      <h1 class="d-title">${titleHTML(p)}</h1>
       <div class="d-body">${esc(p.body)}</div>
       ${p.image?`<div class="shot"><i>📷</i>${esc(p.image)}</div>`:''}
       ${isPoll(p)?pollHTML(p):''}
@@ -2892,6 +2901,7 @@ function myWeight(p){
   w+=p.comments.filter(c=>c.by==='me').length*3;
   return w;
 }
+function winWeight(i){ return i<10?1:i<30?0.5:i<60?0.2:0; }
 function buildMentions(){
   const key=DB.posts.length+':'+DB.posts.reduce((a,p)=>a+p.comments.length+myWeight(p),0)
     +':'+(DB.people||[]).map(p=>p.id+'\t'+p.name).join('|');
@@ -2933,7 +2943,7 @@ function vSearch(){
   if(!list.length) return `<div class="empty">'${esc(w)}'가 들어간 글이 없습니다.</div>`;
   return `<div class="sec" style="background:var(--card)">'${esc(w)}' · 글 ${list.length}개</div>`
     + list.map(p=>`<button class="hot-row" data-open="${p.id}">
-      <span class="hot-b"><span class="hot-t">${isPoll(p)?'<span class="vbadge">투표</span>':''}${esc(p.title)}</span>
+      <span class="hot-b"><span class="hot-t">${titleHTML(p)}</span>
         <span class="hot-m">♡ ${p.likes} · 💬 ${cCount(p)} · ${ago(p.at)}</span></span></button>`).join('');
 }
 function vMentions(){
@@ -2946,7 +2956,7 @@ function vMentions(){
     + `<div class="note" style="background:var(--card);padding:0 14px 12px">
         이 사람이 언급된 글에 공감·스크랩·댓글·투표한 만큼 관심도가 쌓입니다.</div>`
     + list.map(p=>`<button class="hot-row" data-open="${p.id}">
-      <span class="hot-b"><span class="hot-t">${isPoll(p)?'<span class="vbadge">투표</span>':''}${esc(p.title)}</span>
+      <span class="hot-b"><span class="hot-t">${titleHTML(p)}</span>
         <span class="hot-m">♡ ${p.likes} · 💬 ${cCount(p)} · ${ago(p.at)}</span></span></button>`).join('');
 }
 function vPeople(){
