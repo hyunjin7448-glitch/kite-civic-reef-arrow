@@ -768,6 +768,7 @@ const DEFAULT_ATPL=`{시점}
     {
       "title": "글 제목",
       "body": "본문. 줄바꿈은 \\n 으로.",
+      "time": "14:32",
       "likes": 42,
       "scraps": 5,{떡밥필드}{사진필드}
       "comments": [
@@ -789,6 +790,7 @@ const DEFAULT_ATPL=`{시점}
     {
       "title": "조별과제 vs 개인과제",
       "body": "둘 중 하나만 평생 해야 한다면.",
+      "time": "13:10",
       "options": ["조별과제만", "개인과제만"],
       "votes": [63, 412],
       "likes": 42,{떡밥필드}
@@ -807,6 +809,7 @@ const DEFAULT_ATPL=`{시점}
     {
       "title": "[거래] 공학용 계산기 팔아요",
       "body": "연구실 정리하면서 나왔어요. 뒷면에 이름 새겨져 있습니다.",
+      "time": "12:48",
       "likes": 42,
       "scraps": 5,
       "name": "김대현 교수가 쓰던 공학용 계산기",
@@ -830,7 +833,8 @@ const DEFAULT_ATPL=`{시점}
 개수가 0인 종류는 해당 배열을 [] 로 비워라. 키(posts/polls/market)는 빼지 마라.
 
 게시글 규칙:
-- 시간 관련 항목(after 등)은 넣지 마라. 공개 속도는 앱에서 조절한다.
+- time — 캠퍼스 게시판에 올라온 시각. "HH:MM" 24시간제. 오늘 0:00부터 지금 사이에만. 미래는 넣지 마라.
+  글마다 시각을 다르게. 지금에 가까운 글이 더 많게.
 - comments[].writer — 글쓴이 본인의 댓글이면 true.
 - comments[].reply — 몇 번째 댓글(0부터)에 대댓글로 달지. 없는 번호를 쓰지 마라.
 - choices — 글마다 3~4개. 읽는 사람이 버튼으로 고를 댓글이다.
@@ -844,6 +848,7 @@ const DEFAULT_ATPL=`{시점}
 - 게시판은 하나뿐이니 분류하지 말고 한 줄기로 써라.
 
 투표 규칙:
+- time은 게시글과 같다. 오늘 지금 이전.
 - options는 2개를 기본으로. 3~4개는 정말 필요할 때만. 문구는 12자를 넘기지 마라.
 - votes는 초기 득표. 30~500 사이에서 한쪽으로 기울게. 반반은 재미없다.
 - title은 "A vs B" 형태거나 질문형. body는 조건을 한 줄로.
@@ -851,6 +856,7 @@ const DEFAULT_ATPL=`{시점}
 - 둘 다 그럴듯한 양자택일. 명백한 정답 금지.
 
 물품 규칙:
+- time은 게시글과 같다. 오늘 지금 이전.
 - 게시판에 [거래] 말머리로 올라가는 글이다. 제목은 반드시 "[거래] "로 시작해라.
 - owner — 아래 인물 목록에 있는 이름을 그대로. 목록에 없는 인물을 지어내지 마라. 골고루 배정해라.
 - name — 물건 이름. 누구 물건인지 드러나게. price 500~5000.
@@ -1161,10 +1167,31 @@ function srcOf(p){
   if(!p||p.fi<0) return null;
   return (p.pk==='poll'?DB.polls:DB.feed)[p.fi]||null;
 }
+function stampOf(f, fallback){
+  const raw=f&&(f.time||f.uploaded);
+  if(raw==null || raw==='') return fallback;
+  const s=String(raw).trim();
+  let h=null, m=0;
+  const a=s.match(/(\d{1,2})\s*:\s*(\d{2})/);
+  if(a){ h=+a[1]; m=+a[2]; }
+  else {
+    const b=s.match(/(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?/);
+    if(b){ h=+b[1]; m=+(b[2]||0); }
+  }
+  if(h==null || h>23 || m>59) return fallback;
+  if(/오후|밤/.test(s) && h>0 && h<12) h+=12;
+  if(/오전|새벽/.test(s) && h===12) h=0;
+  const d=worldDate();
+  const at=new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0).getTime()-WORLD0;
+  const now=DB?DB.clock:fallback;
+  if(at>now) return now;
+  if(at<now-24*HOUR) return fallback;
+  return at;
+}
 function spawnPost(f,due,poll,fi){
   const trade=!!(f&&(f.trade||f.mid)&&!poll);
   const o={id:uid(), title:String(f.title||'(제목 없음)'), body:String(f.body||''),
-    at:due, likes:+f.likes||0, liked:false, scraps:+f.scraps||0, scrapped:false,
+    at:stampOf(f,due), likes:+f.likes||0, liked:false, scraps:+f.scraps||0, scrapped:false,
     anon:f.anon!==false, author:null, image:imgOf(f), comments:[],
     fi:fi==null?-1:fi, pk:poll?'poll':(trade?'trade':'feed'), cn:0, cAt:due, cmap:[], used:[], myNo:0};
   if(f.arc) o.arc=String(f.arc).slice(0,40);
@@ -2166,17 +2193,20 @@ function mkTradeHTML(it,q){
 }
 function weekLabel(){
   const d=worldDate();
-  const w=Math.min(5, Math.max(1, Math.ceil(d.getDate()/7)));
-  return d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+w+'주차';
+  const days='일월화수목금토';
+  return d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 '+days[d.getDay()]+'요일';
 }
 function clockStamp(){
   const d=worldDate();
-  const days='일월화수목금토';
   const h=d.getHours();
   const ap=h<5?'새벽':h<12?'오전':h<18?'오후':'밤';
   const h12=h%12||12;
   const mm=String(d.getMinutes()).padStart(2,'0');
-  return weekLabel()+' · '+(d.getMonth()+1)+'월 '+d.getDate()+'일 '+days[d.getDay()]+'요일 '+ap+' '+h12+':'+mm;
+  return weekLabel()+' '+ap+' '+h12+':'+mm;
+}
+function nowHM(){
+  const d=worldDate();
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
 function todHint(){
   const h=worldDate().getHours();
@@ -2206,12 +2236,14 @@ function buildAll(){
   const withArc=S.g.arc!=='0' && total>0 && aPct>0;
   const arcN=withArc?Math.max(1, Math.round(total*aPct/100)):0;
   const when=clockStamp();
+  const hm=nowHM();
   const whenBlock=when+' 게시물•물품•투표\n'
-    +'지금은 캠퍼스 시각이다. '+todNow()[3]+'. '+todHint()+'\n'
-    +'글·댓글·투표·거래는 전부 이 시간대에 올라온 것처럼 써라.\n'
+    +'오늘은 이 하루만. 지금은 캠퍼스 시각 '+hm+' · '+todNow()[3]+'. '+todHint()+'\n'
+    +'글·댓글·투표·거래는 전부 오늘, 이 시간대에 올라온 것처럼 써라.\n'
     +'아침 글에 야식을 넣거나, 밤에 첫 수업 출석 글을 쓰지 마라.\n'
-    +'학사 일정·날씨·유행도 이 날짜·이 주에 맞게. 다른 달·다른 주·다른 시간대 이야기는 쓰지 마라.\n'
-    +'제목이나 본문에 시계 숫자("오전 8시")를 박지 말고, 생활의 결로 보여라.';
+    +'학사 일정·날씨·유행도 오늘에 맞게. 어제·다른 날 이야기는 쓰지 마라.\n'
+    +'각 항목에 "time": "HH:MM" 을 넣어라. 오늘 00:00부터 지금 '+hm+' 사이. 미래 시각은 넣지 마라.\n'
+    +'글마다 시각을 다르게, 지금에 가까운 글이 더 많게. 제목·본문에 시계 숫자를 박지 말고 생활의 결로 보여라.';
 
   const imgField=withImg?'\n      "image": "텀블러만 놓인 빈 자리 사진",':'';
   const imgRule=withImg
@@ -2897,7 +2929,7 @@ function vLab(){
   const n=+S.g.n||0, qn=+S.g.qn||0, mn=+S.g.mn||0;
   const make=`<div class="row"><div class="k">지금 캠퍼스 시각
         <small>${esc(clockStamp())} · ${esc(todNow()[3])}</small></div></div>
-      <div class="note" style="padding-top:0">프롬프트 첫 줄에 이 시각이 들어갑니다. 글은 이 시간대 이야기로 맞춥니다.</div>
+      <div class="note" style="padding-top:0">프롬프트는 오늘 하루분입니다. 글마다 업로드 시각(time)이 들어갑니다.</div>
       ${slider('n',S.g.n,'게시글 개수','한 번에 만들 글 수. 0이면 안 만듦')}
       ${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수. 0이면 안 만듦')}
       ${slider('mn',S.g.mn,'물품 개수','한 번에 만들 거래 글 수. 0이면 안 만듦')}
