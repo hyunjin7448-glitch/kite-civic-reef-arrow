@@ -972,7 +972,7 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
   qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,atplEdit:false,atplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
   backupText:'',ppaste:'',gpaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
   playing:false,cover:'in',
-  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,calTab:'view',mine:'me',photoFor:'',
+  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,calTab:'view',mine:'me',photoFor:'',bandLock:0,
   fold:{import:1,make:1},
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
@@ -1460,6 +1460,7 @@ function tick(){
   DB.clock+=Math.max(0, now-(DB.lastTick||now))*timeScale();
   DB.lastTick=now;
   let ch=false, posted=false;
+  if(syncPromptClock()) ch=true;
   while(vaultWait(false)>0){
     const due=nextDue((DB.vault||[])[DB.vrev||0]);
     if(due>DB.clock) break;
@@ -2277,6 +2278,38 @@ const SLOTS=[[0,6],[6,12],[12,18],[18,24]];
 function slotOfHour(h){
   return SLOTS.find(s=>h>=s[0]&&h<s[1])||SLOTS[0];
 }
+function clockBand(){
+  const d=worldDate();
+  const s=slotOfHour(d.getHours());
+  return {y:d.getFullYear(), m:d.getMonth()+1, d:d.getDate(), a:s[0], b:s[1]};
+}
+function bandKey(t){ return [t.y,t.m,t.d,t.a,t.b].join('-'); }
+function applyBand(t){
+  S.g.yy=String(t.y); S.g.mm=String(t.m); S.g.dd=String(t.d);
+  S.g.h0=String(t.a); S.g.h1=String(t.b);
+}
+function bandPast(t, now){
+  if(now.y!==t.y) return now.y>t.y;
+  if(now.m!==t.m) return now.m>t.m;
+  if(now.d!==t.d) return now.d>t.d;
+  return now.a>=t.b;
+}
+function followClockBand(){
+  S.bandLock=0;
+  applyBand(clockBand());
+  if(S.gen) buildAll({quiet:1});
+  else render();
+}
+function syncPromptClock(){
+  if(!DB||!S.playing) return false;
+  const now=clockBand();
+  if(S.bandLock && !bandPast(hourBand(), now)) return false;
+  S.bandLock=0;
+  if(bandKey(hourBand())===bandKey(now)) return false;
+  applyBand(now);
+  if(S.gen) buildAll({quiet:1});
+  return true;
+}
 function tlEq(x,t){ return x.y===t.y&&x.m===t.m&&x.d===t.d&&x.a===t.a&&x.b===t.b; }
 function sortTl(){
   DB.tl.sort((a,b)=> (a.y-b.y)||(a.m-b.m)||(a.d-b.d)||(a.a-b.a));
@@ -2298,6 +2331,7 @@ function ensureTl(){
 }
 function pickTl(x){
   if(!x) return;
+  S.bandLock=1;
   S.g.yy=String(x.y); S.g.mm=String(x.m); S.g.dd=String(x.d);
   S.g.h0=String(x.a); S.g.h1=String(x.b);
 }
@@ -2346,7 +2380,7 @@ function tlHTML(){
   const t=hourBand();
   const lab={wait:'대기', made:'프롬프트', in:'저장됨'};
   const next=DB.tl.find(x=>x.st!=='in');
-  return `<div class="note">연도는 캠퍼스 시계가 정합니다 (${campusYear()}년). 저장된 다음 구간이 프롬프트가 됩니다. 예외는 아래에서 직접 넣습니다.</div>
+  return `<div class="note">연도는 캠퍼스 시계가 정합니다 (${campusYear()}년). 프롬프트는 시간이 다음 구간으로 가면 자동으로 다시 만들어집니다. 아래를 누르면 그 구간에 고정됩니다.</div>
       ${(DB.tl||[]).map(x=>{
         const on=tlEq(x,t);
         const st=next&&x.id===next.id&&x.st!=='in'?'다음':(lab[x.st]||'대기');
@@ -2578,12 +2612,13 @@ function slotHTML(){
   }).join('')}</div>`;
 }
 function atpl(){ return (DB.atpl&&DB.atpl.trim())?DB.atpl:DEFAULT_ATPL; }
-function buildAll(){
+function buildAll(opt){
+  opt=opt||{};
   const n=+S.g.n||0, qn=+S.g.qn||0, mn=+S.g.mn||0;
   const gT=$('#gT'); if(gT) S.g.topic=gT.value;
   const qT=$('#qT'); if(qT) S.g.qtopic=qT.value;
   const mT=$('#mT'); if(mT) S.g.mtopic=mT.value;
-  if(n+qn+mn<=0) return toast('게시글·투표·물품 개수를 하나 이상 올려 주세요');
+  if(n+qn+mn<=0){ if(!opt.quiet) toast('게시글·투표·물품 개수를 하나 이상 올려 주세요'); return; }
   const topic=String(S.g.topic||'').trim()||'대학 생활 전반';
   const qtopic=String(S.g.qtopic||'').trim()||'대학 생활 전반';
   const mtopic=String(S.g.mtopic||'').trim();
@@ -2661,6 +2696,10 @@ function buildAll(){
   if(S.gen.indexOf(when)<0) S.gen=whenBlock+'\n\n'+S.gen;
   if(evBlock && S.gen.indexOf('지정 사건')<0) S.gen=S.gen+'\n\n'+evBlock;
   markTl('made');
+  if(opt.quiet){
+    const o=$('#genOut'); if(o) o.value=S.gen;
+    return;
+  }
   S.fold=S.fold||{}; S.fold.out=1; S.fold.make=1; S.fold.line=1;
   render();
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
@@ -3246,7 +3285,11 @@ function vLab(){
       <div class="fld"><button class="btn" data-act="gen">프롬프트 만들기</button></div>
       ${S.gen?`<div class="fld">
         <textarea class="ta" id="genOut" style="min-height:160px" readonly>${esc(S.gen)}</textarea>
-        <button class="btn" data-act="copy">프롬프트 복사</button></div>`:''}`;
+        <div class="note" style="padding:8px 0 0">${S.bandLock
+          ?'타임라인에서 고른 구간에 고정돼 있습니다.'
+          :'캠퍼스 시간이 다음 구간으로 가면 이 프롬프트가 자동으로 다시 만들어집니다.'}</div>
+        <button class="btn" data-act="copy">프롬프트 복사</button>
+        ${S.bandLock?`<button class="btn sub" data-act="band-now">캠퍼스 시간에 맞추기</button>`:''}</div>`:''}`;
   const edit=`<div class="note">자리표시자는 만들 때 자동으로 채워집니다.
         <b>{시점}</b> <b>{할일}</b> <b>{사건}</b> <b>{인물}</b> <b>{사진필드}</b> <b>{사진규칙}</b> <b>{떡밥필드}</b> <b>{떡밥규칙}</b></div>
       <div class="fld"><button class="btn sub" data-act="atpl-toggle">
@@ -3550,7 +3593,7 @@ document.addEventListener('click',e=>{
   if(d.slot!=null && d.slot!==''){
     const slots=[[0,6],[6,12],[12,18],[18,24]];
     const s=slots[+d.slot];
-    if(s){ S.g.h0=String(s[0]); S.g.h1=String(s[1]); render(); }
+    if(s){ S.bandLock=1; S.g.h0=String(s[0]); S.g.h1=String(s[1]); render(); }
     return;
   }
   if(d.tl){
@@ -3764,6 +3807,7 @@ document.addEventListener('click',e=>{
       }else toast('이 브라우저는 지원하지 않습니다');
       break;
     case 'copy': copyPrompt(); break;
+    case 'band-now': followClockBand(); toast('지금 캠퍼스 시간으로 맞췄습니다'); break;
     case 'reset': S.sheet={type:'reset'}; render(); break;
     case 'reset-sample': S.sheet={type:'reset-sample'}; render(); break;
     case 'reset-sample-yes': S.sheet=null; resetSamplePosts(); break;
@@ -3796,6 +3840,7 @@ function onSlide(e,done){
     return true;
   }
   S.g[key]=String(val);
+  if(key==='mm'||key==='dd'||key==='h0'||key==='h1') S.bandLock=1;
   const lb=document.getElementById('sv-'+key);
   if(lb) lb.textContent=d.fmt(val);
   if(done){ save(); tick(); }
