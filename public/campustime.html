@@ -2983,10 +2983,20 @@ function buildAll(opt){
   const total=n+qn+mn;
   const imgPct=+S.g.imgPct||0, withImg=n>0 && imgPct>0;
   const pPct=DB.people.length?(+S.g.peoplePct||0):0;
-  const aPct=Math.max(0, Math.min(50, +S.g.arcPct||15));
-  const withArc=S.g.arc!=='0' && total>0 && aPct>0;
-  const arcN=withArc?Math.max(1, Math.round(total*aPct/100)):0;
   const t=hourBand();
+  const calNames=[];
+  let calPct=0;
+  calForBand(t).forEach(e=>{
+    const name=String(e.text||'').trim().replace(/"/g,'');
+    if(!name) return;
+    if(calNames.indexOf(name)<0) calNames.push(name);
+    calPct=Math.max(calPct, +e.pct||20);
+  });
+  const aPct=Math.max(0, Math.min(50, +S.g.arcPct||15));
+  const withCal=calNames.length>0;
+  const withArc=((S.g.arc!=='0' && total>0 && aPct>0) || withCal) && total>0;
+  const usePct=withCal?Math.max(aPct, Math.max(5, Math.min(50, calPct||20))):aPct;
+  const arcN=withArc?Math.max(1, Math.round(total*usePct/100)):0;
   const when=rangeStamp()+' 글';
   const lo=String(t.a).padStart(2,'0')+':00';
   const hi=t.b>=24?'24:00':(String(t.b).padStart(2,'0')+':00');
@@ -3002,13 +3012,21 @@ function buildAll(opt){
   const imgRule=withImg
     ?'\n- image — 실제 사진이 아니라 설명 한 줄이다. 화면에는 "📷 …" 상자로 뜬다.\n  파일 경로나 URL, 확장자를 쓰지 마라. 30자 이내. 게시글의 약 '+imgPct+'%에만 넣어라.'
     : (n>0?'\n- image 필드는 넣지 마라.':'');
-  const arcField=withArc?'\n      "arc": "도서관 자리 사건",':'';
+  const arcField=withArc?'\n      "arc": "'+(calNames[0]||'도서관 자리 사건')+'",':'';
   const arcRule=withArc
-    ?'\n- arc — 같은 사건을 묶는 이름표다. 게시글·물품·투표에 똑같은 문자열을 붙이면 앱이 이어 보여준다.\n'
-     +'  전체를 한 떡밥으로 만들지 마라. 떡밥은 종류를 가리지 않고 나눠 써도 된다 (글↔물품↔투표).\n'
-     +'  '+total+'개 중 '+arcN+'개에만 arc를 넣어라 (약 '+aPct+'%. 예: 30개면 5개 안팎).\n'
-     +'  떡밥은 한두 갈래만. 예: 분실 글 + "[거래] 에어팟" + "주인 나타났냐" 투표.\n'
-     +'  나머지 항목에는 arc 키를 넣지 마라.'
+    ?(withCal
+      ?('\n- arc — 같은 사건을 묶는 이름표다. 게시글·물품·투표에 똑같은 문자열을 붙이면 앱이 이어 보여준다.\n'
+        +'  이번 구간 달력 일정을 떡밥으로 써라. arc 값은 아래 이름을 그대로 복사해라.\n'
+        +calNames.map(x=>'  - '+x).join('\n')+'\n'
+        +'  새 떡밥 이름을 만들지 마라. 일정과 무관한 글에는 arc 키를 넣지 마라.\n'
+        +'  전체를 한 떡밥으로 만들지 마라. 글·물품·투표에 걸쳐 나눠 써도 된다.\n'
+        +'  '+total+'개 중 '+arcN+'개에만 arc를 넣어라 (약 '+usePct+'%. 일정의 화제성).\n'
+        +'  나머지 항목에는 arc 키를 넣지 마라.')
+      :('\n- arc — 같은 사건을 묶는 이름표다. 게시글·물품·투표에 똑같은 문자열을 붙이면 앱이 이어 보여준다.\n'
+        +'  전체를 한 떡밥으로 만들지 마라. 떡밥은 종류를 가리지 않고 나눠 써도 된다 (글↔물품↔투표).\n'
+        +'  '+total+'개 중 '+arcN+'개에만 arc를 넣어라 (약 '+aPct+'%. 예: 30개면 5개 안팎).\n'
+        +'  떡밥은 한두 갈래만. 예: 분실 글 + "[거래] 에어팟" + "주인 나타났냐" 투표.\n'
+        +'  나머지 항목에는 arc 키를 넣지 마라.'))
     :'\n- arc 필드는 게시글·물품·투표 어디에도 넣지 마라.';
 
   let cast='';
@@ -3025,10 +3043,6 @@ function buildAll(opt){
 
   const evs=[];
   let ePct=0;
-  calForBand(t).forEach(e=>{
-    evs.push(e.text);
-    ePct=Math.max(ePct, +e.pct||20);
-  });
   if(S.g.evOn==='1'){
     String(S.g.ev||'').split(/\n/).map(s=>s.trim()).filter(Boolean).forEach(x=>{ if(evs.indexOf(x)<0) evs.push(x); });
     if(evs.length) ePct=Math.max(ePct, +S.g.evPct||20);
@@ -3647,6 +3661,7 @@ function vLab(){
         <button class="pill ${S.g.arc!=='0'?'on':''}" data-act="toggle-arc">
           ${S.g.arc!=='0'?'켜짐':'꺼짐'}</button></div>
       ${S.g.arc!=='0'?slider('arcPct',S.g.arcPct||'15','떡밥 비율','전체 글·물품·투표 중 떡밥이 붙는 비율'):''}
+      <div class="note" style="padding:8px 14px 0">일정 탭에 있는 그 구간 일정은 켜짐과 상관없이 떡밥 이름으로 들어갑니다.</div>
       <div class="row"><div class="k">사건 직접 작성<small>켜면 적은 사건이 일부 글에만 반영됩니다</small></div>
         <button class="pill ${S.g.evOn==='1'?'on':''}" data-act="toggle-ev">
           ${S.g.evOn==='1'?'켜짐':'꺼짐'}</button></div>
