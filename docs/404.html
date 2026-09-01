@@ -277,7 +277,7 @@
   /* 투표 */
   .vbadge{display:inline-block;font-size:10px;font-weight:800;color:var(--red);background:var(--red-dim);
     border-radius:5px;padding:2px 6px;margin-right:6px;vertical-align:2px}
-  .tbadge{display:inline-block;font-size:10.5px;font-weight:800;color:#fff;background:var(--red);
+  .tbadge{display:inline-block;font-size:10.5px;font-weight:800;color:#5B6570;background:#E7ECF0;
     border-radius:4px;padding:2px 7px;margin-right:6px;vertical-align:2px;letter-spacing:-.02em;
     line-height:1.4}
   .poll{margin-top:15px;display:flex;flex-direction:column;gap:8px}
@@ -2371,7 +2371,7 @@ function calHTML(){
   });
   const dayEvs=calOnDay(sel);
   const slotLab=['0~6','6~12','12~18','18~24'];
-  return `<div class="note">날짜를 눌러 사건을 넣습니다. 그 날·구간의 프롬프트를 만들 때 자동으로 붙습니다.</div>
+  return `<div class="note">날짜를 눌러 캠퍼스 일정을 넣습니다. 그 날·구간의 글 프롬프트에 자동으로 붙습니다.</div>
       <div class="cal-nav">
         <button type="button" class="icon-btn" data-cnav="-1" aria-label="이전 달">‹</button>
         <b>${y}년 ${m}월</b>
@@ -2554,8 +2554,8 @@ function showNextAch(){}
 /* ===================== 렌더 ===================== */
 let lastView=null;
 function render(){
-  if(S.tab==='market'||S.tab==='poll') S.tab='feed';
-  if(S.view==='market'||S.view==='poll') S.view='feed';
+  if(S.tab==='market'||S.tab==='poll'||S.tab==='people') S.tab=S.tab==='people'?'mine':'feed';
+  if(S.view==='market'||S.view==='poll'||S.view==='people') S.view=S.view==='people'?'mine':'feed';
   const app=$('#app');
   const same=(lastView===S.view);
   const keepTop=same?app.scrollTop:0;
@@ -2565,7 +2565,7 @@ function render(){
   let fsel=null; try{ fsel=fid?ae.selectionStart:null; }catch(e){}
 
   renderHeader(); renderNav(); renderCover();
-  const map={feed:vFeed,poll:vPoll,detail:vDetail,hot:vHot,mine:vMine,people:vPeople,mentions:vMentions,search:vSearch,more:vMore,lab:vLab,stock:vStock,market:vMarket,mitem:vMItem};
+  const map={feed:vFeed,poll:vPoll,detail:vDetail,hot:vHot,mine:vMine,people:vMine,cal:vCal,mentions:vMentions,search:vSearch,more:vMore,lab:vLab,stock:vStock,market:vMarket,mitem:vMItem};
   app.innerHTML=(map[S.view]||vFeed)();
   lastView=S.view;
   app.scrollTop=same?keepTop:0;
@@ -2589,12 +2589,12 @@ function renderHeader(){
   else if(S.view==='detail'){ const dp=postOf(S.post);
     h=`${back}<div class="h-title">${dp&&isTrade(dp)?'거래':dp&&isPoll(dp)?'투표':'게시판'}</div>${clkHTML()}`; }
   else if(S.view==='hot') h=`<div class="h-title">인기 글</div>${clkHTML()}`;
-  else if(S.view==='mine') h=`<div class="h-title">나의 활동</div>${clkHTML()}`;
+  else if(S.view==='mine') h=`<div class="h-title">나</div>${clkHTML()}
+    <button class="icon-btn" data-act="add-person" aria-label="인물 추가">＋</button>`;
+  else if(S.view==='cal') h=`<div class="h-title">일정</div>${clkHTML()}`;
   else if(S.view==='search') h=`${back}<div class="h-title">${esc(S.q||'')}</div>`;
   else if(S.view==='mentions'){ const mp=DB.people.find(x=>x.id===S.ment);
     h=`${back}<div class="h-title">${esc(mp?mp.name:'언급된 글')}</div>`; }
-  else if(S.view==='people') h=`<div class="h-title">인물</div>
-    <button class="icon-btn" data-act="add-person" aria-label="인물 추가">＋</button>`;
   else if(S.view==='market') h=`<div class="h-title">시장</div>`;
   else if(S.view==='mitem') h=`${back}<div class="h-title">매물</div>`;
   else if(S.view==='more') h=`${back}<div class="h-title">더보기</div>`;
@@ -2603,7 +2603,7 @@ function renderHeader(){
   $('#hdr').innerHTML=h;
 }
 function renderNav(){
-  const items=[['feed','☰','게시판'],['hot','✦','인기'],['mine','◔','나의'],['people','◍','인물']];
+  const items=[['feed','☰','게시판'],['hot','✦','인기'],['mine','◔','나'],['cal','▦','일정']];
   $('#nav').innerHTML=items.map(([k,i,l])=>
     `<button data-tab="${k}" class="${S.tab===k?'on':''}"><i>${i}</i>${l}</button>`).join('');
 }
@@ -2672,6 +2672,7 @@ function vMine(){
   }).filter(Boolean);
   const waits=(DB.morders||[]).filter(x=>x.side==='buy');
   return `<div class="pad">
+    ${peopleBlock()}
     <div class="stat-row card" style="display:flex;padding:16px 0;text-align:center">
       <div style="flex:1"><b style="display:block;font-size:18px;font-weight:800">${mine.length}</b>
         <span style="font-size:11.5px;color:var(--sub)">내 댓글</span></div>
@@ -2712,6 +2713,9 @@ function vMine(){
         :`<div class="note" style="color:var(--faint)">스크랩한 글이 없습니다.</div>`}
     </div>
   </div>`;
+}
+function vCal(){
+  return `<div class="pad"><div class="card">${calHTML()}</div></div>`;
 }
 function arcHTML(p){
   if(!p.arc) return '';
@@ -2925,7 +2929,7 @@ function vSearch(){
 }
 function vMentions(){
   const pr=DB.people.find(x=>x.id===S.ment);
-  if(!pr){ S.view='people'; return vPeople(); }
+  if(!pr){ S.view='mine'; S.tab='mine'; return vMine(); }
   const ids=buildMentions().posts[pr.id]||[];
   const list=ids.map(id=>postOf(id)).filter(Boolean);
   if(!list.length) return `<div class="empty">${esc(pr.name)}이(가) 언급된 글이 아직 없습니다.</div>`;
@@ -2936,12 +2940,11 @@ function vMentions(){
       <span class="hot-b"><span class="hot-t">${titleHTML(p)}</span>
         <span class="hot-m">♡ ${p.likes} · 💬 ${cCount(p)} · ${ago(p.at)}</span></span></button>`).join('');
 }
-function vPeople(){
+function peopleBlock(){
   const bm=buildMentions(), mm=bm.map, ii=bm.interest;
   const max=Math.max(1,...DB.people.map(pr=>mm[pr.id]||0));
   const any=DB.people.some(pr=>(mm[pr.id]||0)>0);
-  return `<div class="pad">
-    ${any?`<div class="card" style="padding-bottom:8px">
+  return `${any?`<div class="card" style="padding-bottom:8px">
       <div class="sec">언급 횟수</div>
       <div class="note" style="padding-bottom:6px">지금까지 올라온 글과 댓글에서 이름이 나온 횟수입니다.</div>
       ${DB.people.slice().sort((a,b)=>(mm[b.id]||0)-(mm[a.id]||0)).map(pr=>`
@@ -2949,10 +2952,9 @@ function vPeople(){
           <span class="bt"><span style="width:${Math.round((mm[pr.id]||0)/max*100)}%"></span></span>
           <span class="bn">${mm[pr.id]||0}</span></div>`).join('')}
     </div>`:''}
-    <div class="card">
+    <div class="card" style="margin-top:${any?10:0}px">
       <div class="sec">등장 인물 ${DB.people.length}명</div>
-      <div class="note">여기 적어둔 인물이 프롬프트 생성기에 그대로 들어갑니다.
-        AI가 이 사람들을 글과 댓글에 등장시킵니다.</div>
+      <div class="note">여기 적어둔 인물이 글과 댓글에 등장합니다.</div>
       ${DB.people.length?DB.people.map(pr=>{
         const head=[pr.age,pr.build,pr.shape].filter(Boolean).join(' · ');
         const lines=[[pr.desc,''],[pr.look,'외모'],[pr.chara,'성격'],[pr.memo,'']]
@@ -2971,10 +2973,7 @@ function vPeople(){
             ${mc?`언급된 글 보기 · ${mc}번 ›`:'아직 언급되지 않았습니다'}</button></div>`;}).join('')
         :`<div class="note" style="color:var(--faint)">아직 등록한 인물이 없습니다. 오른쪽 위 ＋ 로 추가하세요.</div>`}
     </div>
-    <div style="padding:0 2px"><button class="btn" data-act="add-person">＋ 인물 추가</button></div>
-    <div class="note" style="padding:14px 4px">교수, 과대, 조교, 동아리 회장처럼 커뮤니티에서 자주 언급되는 사람을 적어두세요.
-      실명 대신 호칭이나 별명을 쓰는 편이 자연스럽습니다.</div>
-  </div>`;
+    <div style="padding:8px 2px 4px"><button class="btn" data-act="add-person">＋ 인물 추가</button></div>`;
 }
 
 /* ---- 설정 (데이터 · 속도 · 프롬프트 생성기 · 초기화) ---- */
@@ -3036,7 +3035,7 @@ function vLab(){
         ${slider('evPct',S.g.evPct||'20','화제성','이 사건이 드러나는 글·물품·투표 비율')}`:''}
       ${peopleN
         ?slider('peoplePct',S.g.peoplePct,`인물 언급 비율 (등록 ${peopleN}명)`,'인물이 언급되는 글의 비율')
-        :`<div class="note">인물 탭에 사람을 등록하면 인물 언급 옵션이 생깁니다.</div>`}`;
+        :`<div class="note">나 탭에 사람을 등록하면 인물 언급 옵션이 생깁니다.</div>`}`;
   const make=`<div class="note">만든 프롬프트를 복사해 그록에 넣고, 나온 JSON은 창고 · 불러오기에 붙입니다.</div>
       <div class="fld"><button class="btn" data-act="gen">프롬프트 만들기</button></div>
       ${S.gen?`<div class="fld">
@@ -3053,14 +3052,13 @@ function vLab(){
         <button class="btn sub" data-act="ptpl-toggle" style="margin-top:8px">
           ${S.ptplEdit?'인물 프롬프트 닫기':'인물 프롬프트 수정'}${DB.ptpl?' (수정됨)':''}</button>
         ${S.ptplEdit?`
-        <div class="note" style="padding:10px 0 6px"><b>{명단}</b>은 인물 탭 내용으로, <b>{빈도}</b>는 등장 빈도로 채워집니다.</div>
+        <div class="note" style="padding:10px 0 6px"><b>{명단}</b>은 나 탭 인물로, <b>{빈도}</b>는 등장 빈도로 채워집니다.</div>
         <textarea class="ta" id="ptplBox" style="min-height:200px">${esc(S.ptplDraft!=null?S.ptplDraft:ptpl())}</textarea>
         <button class="btn" data-act="ptpl-save">이 내용으로 저장</button>
         <button class="btn sub" data-act="ptpl-reset">기본값으로 되돌리기</button>`:''}</div>`;
   return `<div class="pad">
     <div class="note" style="padding:4px 2px 10px">기계실 · 글을 만드는 곳. 시계와 저장은 창고입니다.</div>
     ${foldCard('line', '타임라인', rangeStamp(), tlHTML(), true)}
-    ${foldCard('cal', '달력', ((DB.cal||[]).length)+'건', calHTML(), true)}
     ${foldCard('qty', '분량', '글 '+n+' · 투표 '+qn+' · 물품 '+mn, qty, true)}
     ${foldCard('topic', '소재', S.g.arc!=='0'?'떡밥 켜짐':'힌트 · 떡밥 · 사건', topic, false)}
     ${foldCard('make', '만들기', S.gen?'복사해서 붙여넣기':'프롬프트 출력', make, true)}
@@ -3101,7 +3099,7 @@ function vStock(){
   const market=`<div class="note">체결 속도와 크레딧만 다룹니다. 가격은 기준가입니다.</div>
       ${slider('mFill',c.mFill,'체결 시간 배수','호가 유리·불리로 정해진 대기 시간에 곱한다')}
       ${slider('mCred',c.mCred,'크레딧 보상량','공감·댓글·투표로 받는 크레딧 배율')}`;
-  const ppl=`<div class="note">다른 파일에서 쓰던 인물 목록을 붙이면 이름이 겹치지 않는 것만 추가됩니다. 인물 카드는 인물 탭에서 고칩니다.</div>
+  const ppl=`<div class="note">다른 파일에서 쓰던 인물 목록을 붙이면 이름이 겹치지 않는 것만 추가됩니다. 인물 카드는 나 탭에서 고칩니다.</div>
       <div class="fld">
         <textarea class="ta" id="ppaste" style="min-height:90px" placeholder='[{"name":"김대현 교수","role":"전공 교수"}]'>${esc(S.ppaste)}</textarea>
         <button class="btn sub" data-act="people-add">인물 목록 붙여넣어 추가</button>
@@ -3458,7 +3456,7 @@ document.addEventListener('click',e=>{
       const cur=S.sheet.id?DB.people.find(x=>x.id===S.sheet.id):null;
       if(cur) Object.assign(cur,data);
       else { DB.people.push(Object.assign({id:uid()},data)); bump('person'); }
-      S.sheet=null; S.pd=null; S.view='people'; S.tab='people';
+      S.sheet=null; S.pd=null; S.view='mine'; S.tab='mine';
       mcCache.key=''; save(); render();
       toast(cur?'수정했습니다':'인물을 추가했습니다'); checkAchs(); break; }
     case 'del-person': DB.people=DB.people.filter(x=>x.id!==S.sheet.id);
