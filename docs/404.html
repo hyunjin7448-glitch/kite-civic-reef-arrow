@@ -1375,7 +1375,7 @@ function rewindClock(){
   DB.lastPostAt=Math.min(DB.lastPostAt||0, to);
   DB.plastAt=Math.min(DB.plastAt||0, to);
   cycleMarket();
-  S.sheet=null;
+  S.sheet={type:'clock'};
   save(); render();
   toast('시간을 되돌렸습니다 · 글 '+gone.length+'개를 보관함으로');
 }
@@ -1507,7 +1507,7 @@ function renderCover(){
 }
 function clkHTML(){
   const paused=!!(DB&&DB.cfg&&DB.cfg.pause);
-  return `<button type="button" class="h-clock${paused?' paused':''}" id="worldClk" data-act="clock-pause" aria-label="${paused?'시간 재개':'시간 정지'}">${esc(worldLabel())}${paused?' · 정지':''}</button>`;
+  return `<button type="button" class="h-clock${paused?' paused':''}" id="worldClk" data-act="clock-sheet" aria-label="시계 조절">${esc(worldLabel())}${paused?' · 정지':''}</button>`;
 }
 function bumpClockUI(){
   const el=document.getElementById('worldClk');
@@ -1532,12 +1532,7 @@ function todNow(){
   return [0,24,1,'보통'];
 }
 function rate(){ return (DB.cfg.tod===false)?1:todNow()[2]; }
-function tick(){
-  if(!DB) return;
-  if(!S.playing || (DB.cfg&&DB.cfg.pause)){ DB.lastTick=Date.now(); return; }
-  const now=Date.now();
-  DB.clock+=Math.max(0, now-(DB.lastTick||now))*timeScale();
-  DB.lastTick=now;
+function drainDue(){
   let ch=false, posted=false;
   if(syncPromptClock()) ch=true;
   while(vaultWait(false)>0){
@@ -1580,9 +1575,28 @@ function tick(){
   });
   if(posted) refreshQuotes();
   if(settleOrders()) ch=true;
+  return {ch, posted};
+}
+function tick(){
+  if(!DB) return;
+  if(!S.playing || (DB.cfg&&DB.cfg.pause)){ DB.lastTick=Date.now(); return; }
+  const now=Date.now();
+  DB.clock+=Math.max(0, now-(DB.lastTick||now))*timeScale();
+  DB.lastTick=now;
+  const {ch}=drainDue();
   save();
   if(ch) redraw();
   checkAchs();
+}
+function skipClock(){
+  if(!DB) return;
+  const ms=rewindDelta();
+  DB.clock=(DB.clock||0)+ms;
+  DB.lastTick=Date.now();
+  drainDue();
+  S.sheet={type:'clock'};
+  save(); render();
+  toast(sText('rw', S.g.rw||'6')+' 앞으로 갔습니다');
 }
 function pulse(){
   if(!DB||!S.playing) return;
@@ -3410,13 +3424,7 @@ function vStock(){
           <span class="c">${x.count}개</span></div>`).join('')}
       ${DB.sources.length>3?`<button class="more-btn" data-act="src-toggle">
         ${S.srcOpen?'접기':`이전 기록 ${DB.sources.length-3}개 더 보기`}</button>`:''}`;
-  const speed=`<div class="note">지금은 ${esc(worldLabel())} · ${esc(todNow()[3])}${DB.cfg.pause?' · 정지 중':''}</div>
-      <div class="row"><div class="k">시간 정지
-        <small>${DB.cfg.pause?'멈춰 있습니다. 글·댓글·체결이 대기합니다.':'흐르는 중입니다. 시계를 눌러도 멈출 수 있습니다.'}</small></div>
-        <button class="pill ${DB.cfg.pause?'on':''}" data-act="clock-pause">${DB.cfg.pause?'정지 중':'흐르는 중'}</button></div>
-      ${slider('rw',S.g.rw||'6','시간 되돌리기','이만큼 과거로. 그 사이 글은 보관함으로 돌아갑니다')}
-      <div class="fld"><button class="btn sub" data-act="rewind-ask">시간 되돌리기</button></div>
-      ${slider('timeScale',c.timeScale,'캠퍼스 시간 속도','현실보다 빨리 흐르는 사이트 안 시계')}
+  const speed=`<div class="note">속도·되돌리기·정지는 오른쪽 위 시계를 누르세요. 지금은 ${esc(worldLabel())}${DB.cfg.pause?' · 정지 중':''}</div>
       ${slider('commentGap',c.commentGap,'댓글 달리는 간격','한 글에 댓글이 하나씩 붙는 속도')}
       ${slider('replyDelay',c.replyDelay,'답글 지연','선택지를 누른 뒤 답글이 오기까지 (실제 초)')}
       <div class="row"><div class="k">시간대 반영
@@ -3464,7 +3472,7 @@ function vStock(){
   return `<div class="pad">
     <div class="note" style="padding:4px 2px 10px">창고 · 글을 넣고 시계를 돌리는 곳. 프롬프트는 기계실입니다.</div>
     ${foldCard('import','불러오기',`대기 글 ${waiting} · 투표 ${pwait}`,load,true)}
-    ${foldCard('clock','시계',DB.cfg.pause?'정지 중':'속도 · 간격 · 시간대',speed,false)}
+    ${foldCard('clock','시계','댓글 간격 · 시간대',speed,false)}
     ${foldCard('replay','다시보기',`보관함 ${vaultWait(false)+vaultWait(true)}개`,replay,false)}
     ${foldCard('mkset','시장','체결 · 크레딧',market,false)}
     ${foldCard('ppl','인물',DB.people.length+'명',ppl,false)}
@@ -3536,7 +3544,22 @@ function renderSheet(){
         ${esc(when)}으로 돌아갑니다. 그 시각 이후 글 ${n}개가 보관함으로 가고, 시간이 다시 흐르면 올라옵니다.
         그 글에 단 댓글·공감도 함께 내려갑니다.</div>
       <button class="btn danger" data-act="rewind-yes">되돌리기</button>
-      <button class="btn sub" data-act="close-sheet">취소</button>`;
+      <button class="btn sub" data-act="clock-sheet">취소</button>`;
+  }else if(S.sheet.type==='clock'){
+    const paused=!!DB.cfg.pause;
+    inner=`<h3>캠퍼스 시계</h3>
+      <div style="font-size:13.5px;color:var(--sub);line-height:1.6;margin-bottom:8px">
+        ${esc(worldLabel())} · ${esc(todNow()[3])}${paused?' · 정지 중':''}</div>
+      <div class="row" style="padding-left:0;padding-right:0">
+        <div class="k">시간 정지<small>${paused?'멈춰 있습니다. 글·댓글·체결이 대기합니다.':'흐르는 중입니다.'}</small></div>
+        <button class="pill ${paused?'on':''}" data-act="clock-pause">${paused?'정지 중':'흐르는 중'}</button></div>
+      ${slider('timeScale',DB.cfg.timeScale,'시간 속도','현실보다 빨리 흐르는 사이트 안 시계')}
+      ${slider('rw',S.g.rw||'6','이동 폭','되돌리기·앞으로 가기가 한 번에 건너뛰는 시간')}
+      <div class="fld" style="display:flex;gap:8px;padding:0 0 8px">
+        <button class="btn sub" data-act="rewind-ask" style="margin-top:0;flex:1">◀ 되돌리기</button>
+        <button class="btn sub" data-act="clock-fwd" style="margin-top:0;flex:1">앞으로 ▶</button>
+      </div>
+      <button class="btn sub" data-act="close-sheet">닫기</button>`;
   }
   const el=document.createElement('div');
   el.className='sheet-bg'; el.innerHTML=`<div class="sheet">${inner}</div>`;
@@ -3798,6 +3821,10 @@ document.addEventListener('click',e=>{
     case 'enter': enterCampus(); break;
     case 'leave': leaveCampus(); break;
     case 'clock-pause': togglePause(); break;
+    case 'clock-sheet':
+      S.sheet=(S.sheet&&S.sheet.type==='clock')?null:{type:'clock'};
+      render(); break;
+    case 'clock-fwd': skipClock(); break;
     case 'rewind-ask': S.sheet={type:'rewind'}; render(); break;
     case 'rewind-yes': rewindClock(); break;
     case 'mk-buy': placeOrder('buy'); break;
