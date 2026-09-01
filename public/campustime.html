@@ -769,6 +769,7 @@ const DEFAULT_ATPL=`{시점}
       "title": "글 제목",
       "body": "본문. 줄바꿈은 \\n 으로.",
       "time": "14:32",
+      "date": "2026-09-01",
       "likes": 42,
       "scraps": 5,{떡밥필드}{사진필드}
       "comments": [
@@ -791,6 +792,7 @@ const DEFAULT_ATPL=`{시점}
       "title": "조별과제 vs 개인과제",
       "body": "둘 중 하나만 평생 해야 한다면.",
       "time": "13:10",
+      "date": "2026-09-01",
       "options": ["조별과제만", "개인과제만"],
       "votes": [63, 412],
       "likes": 42,{떡밥필드}
@@ -810,6 +812,7 @@ const DEFAULT_ATPL=`{시점}
       "title": "[거래] 공학용 계산기 팔아요",
       "body": "연구실 정리하면서 나왔어요. 뒷면에 이름 새겨져 있습니다.",
       "time": "12:48",
+      "date": "2026-09-01",
       "likes": 42,
       "scraps": 5,
       "name": "김대현 교수가 쓰던 공학용 계산기",
@@ -833,7 +836,8 @@ const DEFAULT_ATPL=`{시점}
 개수가 0인 종류는 해당 배열을 [] 로 비워라. 키(posts/polls/market)는 빼지 마라.
 
 게시글 규칙:
-- time — 캠퍼스 게시판에 올라온 시각. "HH:MM" 24시간제. 지시된 날짜·시간 구간 안에만. 구간 밖은 넣지 마라.
+- date — 글이 올라온 날짜. "YYYY-MM-DD". 지시된 그날 그대로.
+- time — 캠퍼스 게시판에 올라온 시각. "HH:MM" 24시간제. 지시된 시간 구간 안에만. 구간 밖은 넣지 마라.
   글마다 시각을 다르게 흩어라.
 - comments[].writer — 글쓴이 본인의 댓글이면 true.
 - comments[].reply — 몇 번째 댓글(0부터)에 대댓글로 달지. 없는 번호를 쓰지 마라.
@@ -1170,25 +1174,57 @@ function srcOf(p){
   return (p.pk==='poll'?DB.polls:DB.feed)[p.fi]||null;
 }
 function stampOf(f, fallback){
-  const raw=f&&(f.time||f.uploaded);
-  if(raw==null || raw==='') return fallback;
-  const s=String(raw).trim();
+  if(!f) return fallback;
+  const ts=String(f.time||f.uploaded||'');
+  const ds=String(f.date||'');
   let h=null, m=0;
-  const a=s.match(/(\d{1,2})\s*:\s*(\d{2})/);
+  const a=ts.match(/(\d{1,2})\s*:\s*(\d{2})/) || ds.match(/(\d{1,2})\s*:\s*(\d{2})/);
   if(a){ h=+a[1]; m=+a[2]; }
   else {
-    const b=s.match(/(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?/);
+    const b=ts.match(/(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?/);
     if(b){ h=+b[1]; m=+(b[2]||0); }
   }
   if(h==null || h>23 || m>59) return fallback;
-  if(/오후|밤/.test(s) && h>0 && h<12) h+=12;
-  if(/오전|새벽/.test(s) && h===12) h=0;
-  const d=worldDate();
-  const at=new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0).getTime()-WORLD0;
-  const now=DB?DB.clock:fallback;
-  if(at>now) return now;
-  if(at<now-24*HOUR) return fallback;
+  if(/오후|밤/.test(ts) && h>0 && h<12) h+=12;
+  if(/오전|새벽/.test(ts) && h===12) h=0;
+  let y, mo, d;
+  const ymd=(ds+' '+ts).match(/(\d{4})\s*[-\/.년]\s*(\d{1,2})\s*[-\/.월]\s*(\d{1,2})/);
+  if(ymd){ y=+ymd[1]; mo=+ymd[2]; d=+ymd[3]; }
+  else {
+    const w=worldDate();
+    y=w.getFullYear(); mo=w.getMonth()+1; d=w.getDate();
+  }
+  const at=new Date(y, mo-1, d, h, m, 0).getTime()-WORLD0;
+  if(!isFinite(at)) return fallback;
   return at;
+}
+function dueOf(f){
+  const t=stampOf(f, null);
+  return typeof t==='number'?t:null;
+}
+function fillStamp(f){
+  if(!f||typeof f!=='object') return f;
+  if(!f.date){
+    const t=hourBand();
+    f.date=t.y+'-'+String(t.m).padStart(2,'0')+'-'+String(t.d).padStart(2,'0');
+  }
+  return f;
+}
+function sortWait(list, revealed){
+  const pub=(list||[]).slice(0, revealed);
+  const wait=(list||[]).slice(revealed);
+  wait.sort((a,b)=>{
+    const da=dueOf(a), db=dueOf(b);
+    const xa=da==null?Infinity:da, xb=db==null?Infinity:db;
+    return xa-xb;
+  });
+  return pub.concat(wait);
+}
+function nextDue(f, lastAt, gap, has){
+  const sched=dueOf(f);
+  if(sched!=null && sched>DB.clock) return sched;
+  if(!has) return DB.clock;
+  return lastAt+gap;
 }
 function spawnPost(f,due,poll,fi){
   const trade=!!(f&&(f.trade||f.mid)&&!poll);
@@ -1385,22 +1421,22 @@ function tick(){
   const gap=dripGap();
   const has=k=>DB.posts.some(p=>p.pk===k || (k==='feed'&&p.pk==='trade'));
   while(vaultWait(false)>0){
-    const due = has('feed')? Math.max(DB.lastPostAt+gap, DB.clock-gap) : DB.clock;
+    const due=nextDue((DB.vault||[])[DB.vrev||0], DB.lastPostAt, gap, has('feed'));
     if(due>DB.clock) break;
     publishVault(false); DB.lastPostAt=due; ch=true; posted=true;
   }
   while(DB.revealed<DB.feed.length){
-    const due = has('feed')? Math.max(DB.lastPostAt+gap, DB.clock-gap) : DB.clock;
+    const due=nextDue(DB.feed[DB.revealed], DB.lastPostAt, gap, has('feed'));
     if(due>DB.clock) break;
     publishPost(DB.revealed,due,false); DB.lastPostAt=due; DB.revealed++; ch=true; posted=true;
   }
   while(vaultWait(true)>0){
-    const due = has('poll')? Math.max(DB.plastAt+gap, DB.clock-gap) : gap*0.5;
+    const due=nextDue((DB.pvault||[])[DB.pvrev||0], DB.plastAt, gap, has('poll'));
     if(due>DB.clock) break;
     publishVault(true); DB.plastAt=due; ch=true; posted=true;
   }
-  while(DB.prevealed<DB.polls.length){                 // 투표는 반 칸 늦게 시작해 겹치지 않는다
-    const due = has('poll')? Math.max(DB.plastAt+gap, DB.clock-gap) : gap*0.5;
+  while(DB.prevealed<DB.polls.length){
+    const due=nextDue(DB.polls[DB.prevealed], DB.plastAt, gap, has('poll'));
     if(due>DB.clock) break;
     publishPost(DB.prevealed,due,true); DB.plastAt=due; DB.prevealed++; ch=true; posted=true;
   }
@@ -1716,6 +1752,7 @@ function addFeed(text,name){
     return toast('title이 있는 글이 하나도 없습니다');
   }
   items.forEach(f=>{
+    fillStamp(f);
     delete f.after;
     (f.comments||[]).forEach(c=>{ delete c.after; if(c.reply!=null&&!(f.comments||[])[c.reply]) delete c.reply; });
     (f.choices||[]).forEach(c=>{
@@ -1732,12 +1769,12 @@ function addFeed(text,name){
   const newPolls=polls.filter(f=>!known.has(f.title));
   if(newPosts.length){
     const drained=DB.revealed>=DB.feed.length;
-    DB.feed=DB.feed.concat(newPosts);
+    DB.feed=sortWait(DB.feed.concat(newPosts), DB.revealed);
     if(drained) DB.lastPostAt=DB.clock;
   }
   if(newPolls.length){
     const pdrained=DB.prevealed>=DB.polls.length;
-    DB.polls=DB.polls.concat(newPolls);
+    DB.polls=sortWait(DB.polls.concat(newPolls), DB.prevealed);
     if(pdrained) DB.plastAt=DB.clock;
   }
   const got=newPosts.length+newPolls.length+madded+added;
@@ -1833,7 +1870,8 @@ function asTradeFeed(it){
     scraps:+s.scraps||+it.scraps||0,
     comments:asPostComments(s.comments||it.comments),
     choices:Array.isArray(s.choices)?s.choices:(Array.isArray(it.choices)?it.choices:[]),
-    arc:it.arc, mid:it.id, trade:1, name:it.name, owner:it.owner
+    arc:it.arc, mid:it.id, trade:1, name:it.name, owner:it.owner,
+    date:s.date||it.date, time:s.time||it.time
   };
 }
 function tradePostOf(mid){
@@ -1873,9 +1911,12 @@ function packMarket(it){
       body:String(it.body||it.desc||''),
       comments:asPostComments(it.comments),
       choices:Array.isArray(it.choices)?it.choices:[],
-      likes:+it.likes||0, scraps:+it.scraps||0
+      likes:+it.likes||0, scraps:+it.scraps||0,
+      date:it.date||'', time:it.time||''
     }
   };
+  if(it.date) o.date=it.date;
+  if(it.time) o.time=it.time;
   if(it.arc) o.arc=String(it.arc).slice(0,40);
   return o;
 }
@@ -2275,7 +2316,8 @@ function buildAll(){
     +'이 구간만 다뤄라. '+t.a+'시부터 '+t.b+'시 직전까지. '+todHint()+'\n'
     +'글·댓글·투표·거래는 전부 이 날짜, 이 시간대에 올라온 것처럼 써라.\n'
     +'다른 날짜·구간 밖 이야기는 쓰지 마라.\n'
-    +'각 항목에 "time": "HH:MM" 을 넣어라. '+lo+' 이상, '+hi+' 미만. 구간 밖은 넣지 마라.\n'
+    +'각 항목에 "date": "'+t.y+'-'+String(t.m).padStart(2,'0')+'-'+String(t.d).padStart(2,'0')+'", "time": "HH:MM" 을 넣어라.\n'
+    +'date는 이 날짜 그대로. time은 '+lo+' 이상, '+hi+' 미만. 구간 밖·다른 날짜는 넣지 마라.\n'
     +'글마다 시각을 다르게 흩어라. 제목·본문에 시계 숫자를 박지 말고 생활의 결로 보여라.';
 
   const imgField=withImg?'\n      "image": "텀블러만 놓인 빈 자리 사진",':'';
