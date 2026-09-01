@@ -1382,10 +1382,20 @@ function tick(){
   let ch=false, posted=false;
   const gap=dripGap();
   const has=k=>DB.posts.some(p=>p.pk===k || (k==='feed'&&p.pk==='trade'));
+  while(vaultWait(false)>0){
+    const due = has('feed')? Math.max(DB.lastPostAt+gap, DB.clock-gap) : DB.clock;
+    if(due>DB.clock) break;
+    publishVault(false); DB.lastPostAt=due; ch=true; posted=true;
+  }
   while(DB.revealed<DB.feed.length){
     const due = has('feed')? Math.max(DB.lastPostAt+gap, DB.clock-gap) : DB.clock;
     if(due>DB.clock) break;
     publishPost(DB.revealed,due,false); DB.lastPostAt=due; DB.revealed++; ch=true; posted=true;
+  }
+  while(vaultWait(true)>0){
+    const due = has('poll')? Math.max(DB.plastAt+gap, DB.clock-gap) : gap*0.5;
+    if(due>DB.clock) break;
+    publishVault(true); DB.plastAt=due; ch=true; posted=true;
   }
   while(DB.prevealed<DB.polls.length){                 // 투표는 반 칸 늦게 시작해 겹치지 않는다
     const due = has('poll')? Math.max(DB.plastAt+gap, DB.clock-gap) : gap*0.5;
@@ -1461,17 +1471,21 @@ function setPtr(h,txt,on){
   if(on) el.classList.add('on'); else el.classList.remove('on');
 }
 function pullLoad(){
-  if(!DB||waitCount()<=0){
-    setPtr(0,'',false); setPull(pullText(),false);
-    return toast('쌓아둔 글을 모두 봤습니다');
-  }
   const el=document.getElementById('ptr');
-  if(el){ el.classList.add('load'); el.style.height=''; setPtr(58,'불러오는 중…',true); }
+  if(el){ el.classList.add('load'); el.style.height=''; setPtr(58,'새로고침…',true); }
   const b=document.getElementById('pullBox'), r=document.getElementById('pullRing');
   if(r) r.style.transform='';
   if(b) b.classList.add('load');
-  setPull('불러오는 중…',true);
-  setTimeout(publishOne,600);
+  setPull('새로고침…',true);
+  setTimeout(()=>{
+    if(DB&&S.playing) tick();
+    render();
+    setPtr(0,'',false);
+    setPull('새로고침',false);
+  },280);
+}
+function pullArmedText(){
+  return '놓으면 새로고침';
 }
 function publishOne(){
   if(!DB) return;
@@ -1489,9 +1503,6 @@ function publishOne(){
 function marketWait(){
   const listed=new Set(DB.listed||[]);
   return (DB.market||[]).filter(it=>!it.down&&!ownedOf(it.id)&&!orderOf(it.id)&&!listed.has(it.id)).length;
-}
-function pullArmedText(){
-  return '놓으면 새 글이 올라옵니다';
 }
 function publishMarket(){
   if(!DB) return;
@@ -1529,7 +1540,7 @@ document.addEventListener('touchmove',e=>{
   }else{
     const up=-d;
     setRing('pullRing',up/55);
-    if(up>55){ if(!armed){ armed=true; setPull(pullArmedText(),true); } }
+    if(up>55){ if(!armed){ armed=true; setPull('놓으면 새로고침',true); } }
     else if(up>12){ armed=false; setPull('조금 더 당기세요',false); }
     else { armed=false; }
   }
@@ -2525,10 +2536,9 @@ function ptrHTML(){
     <span id="ptrTxt">당겨서 새로고침</span></div>`;
 }
 function pullBtn(){
-  const none=waitCount()<=0;
-  return `<button class="pull ${none?'empty':''}" id="pullBox" data-act="pull-load">
-    <span class="ring" id="pullRing" style="${none?'opacity:.3':''}"></span>
-    <span id="pullTxt">${pullText()}</span></button>`;
+  return `<button class="pull" id="pullBox" data-act="pull-load">
+    <span class="ring" id="pullRing"></span>
+    <span id="pullTxt">새로고침</span></button>`;
 }
 function listOf(list,emptyMsg){
   if(!list.length) return ptrHTML()+`<div class="empty">${emptyMsg}<br>
@@ -2556,12 +2566,7 @@ function waitCount(){
   return (DB.feed.length-DB.revealed)+(DB.polls.length-DB.prevealed)+vaultWait(false)+vaultWait(true);
 }
 function pullText(){
-  if(!DB) return '';
-  const n=waitCount();
-  if(n<=0) return '쌓아둔 글을 모두 봤습니다';
-  const v=vaultWait(false)+vaultWait(true);
-  if(v>0) return `당기거나 눌러서 보관함에서 불러오기 (대기 ${v}개)`;
-  return `당기거나 눌러서 새 글 불러오기 (대기 ${n}개)`;
+  return '새로고침';
 }
 
 const score=p=>(p.likes||0)+cCount(p)*3+(p.scraps||0)*2;
@@ -3021,7 +3026,7 @@ function vStock(){
         <button class="pill ${DB.cfg.tod!==false?'on':''}" data-act="tod">
           ${DB.cfg.tod!==false?'켜짐':'꺼짐'}</button></div>
       <div class="fld"><button class="btn sub" data-act="skip">다음 글 지금 공개</button></div>`;
-  const replay=`<div class="note">지금 게시판에 떠 있는 글을 보관함으로 옮깁니다. 보드가 비고, 당겨서 새로고침하면 보관함에서 다시 올라옵니다. 시간 따라 올라오는 새 글은 그대로입니다.</div>
+  const replay=`<div class="note">지금 게시판에 떠 있는 글을 보관함으로 옮깁니다. 보드가 비고, 시간이 지나면 보관함에서 다시 올라옵니다. 새로고침으로는 글이 더 나오지 않습니다.</div>
       <div class="sec">게시판 ${DB.posts.length}개 · 보관함 글 ${vaultWait(false)}개 · 투표 ${vaultWait(true)}개</div>
       <div class="fld"><button class="btn sub" data-act="archive">지금 글을 보관함으로</button></div>`;
   const market=`${slider('mK',c.mK,'시세 변동 계수','언급이 시세에 얼마나 크게 반영되는지')}
