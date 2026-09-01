@@ -167,6 +167,18 @@
   .tl-row .st{font-size:11px;color:var(--faint);flex-shrink:0}
   .tl-row.on .st{color:var(--accent);font-weight:700}
   .tl-row .x{border:0;background:none;color:var(--faint);font-size:16px;padding:0 4px}
+  .cal-nav{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px}
+  .cal-nav b{font-size:15px;font-weight:800;letter-spacing:-.02em}
+  .cal-wk,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0 6px 8px}
+  .cal-wk span{text-align:center;font-size:11px;color:var(--faint);font-weight:700;padding:4px 0}
+  .cal-d{position:relative;border:0;background:none;padding:9px 0 14px;font-size:13px;font-weight:700;border-radius:8px}
+  .cal-d.on{background:var(--red-dim);color:var(--red)}
+  .cal-d.mute{color:var(--faint);font-weight:600}
+  .cal-d .dot{position:absolute;left:50%;bottom:5px;width:5px;height:5px;border-radius:50%;background:var(--red);transform:translateX(-50%)}
+  .cal-ev{display:flex;gap:8px;align-items:flex-start;padding:10px 14px;border-top:1px solid var(--line);text-align:left;width:100%;background:none}
+  .cal-ev .tt{flex:1;font-size:13px;font-weight:700;line-height:1.4}
+  .cal-ev .tm{display:block;font-size:11.5px;font-weight:600;color:var(--faint);margin-top:3px}
+  .cal-ev .x{border:0;background:none;color:var(--faint);font-size:16px;padding:0 2px}
 
   .pp{border-top:1px solid var(--line);background:var(--card)}
   .pp-av{width:44px;height:44px;border-radius:13px;background:var(--red-dim);color:var(--red);
@@ -922,6 +934,7 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
   qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,atplEdit:false,atplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
   backupText:'',ppaste:'',gpaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
   playing:false,cover:'in',
+  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',
   fold:{import:1,make:1},
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
@@ -938,7 +951,7 @@ function fresh(){
     cfg:Object.assign({},CFG_DEF), tpl:null, ptpl:null, qtpl:null, mtpl:null, atpl:null,
     market, listed:[], owned:[], morders:[], credit:10000, trades:0, bestRoi:0, achs:[], marks:{},
     polls:DEFAULT_POLLS.map(x=>x), prevealed:0, plastAt:0,
-    vault:[], vrev:0, pvault:[], pvrev:0, tl:[],
+    vault:[], vrev:0, pvault:[], pvrev:0, tl:[], cal:[],
     people:[
       {id:1,name:'김대현 교수',role:'전공 교수',
        age:'40대 후반',build:'180cm / 68kg',shape:'마르고 어깨가 좁다',
@@ -1005,6 +1018,7 @@ function normalize(d){
   ['dm','convos','aff','dmq','dmNextAt','dtpl'].forEach(k=>{ delete d[k]; });
   d.polls=d.polls||[]; d.prevealed=d.prevealed||0; d.plastAt=d.plastAt||0;
   d.tl=Array.isArray(d.tl)?d.tl:[];
+  d.cal=Array.isArray(d.cal)?d.cal:[];
   d.pvault=Array.isArray(d.pvault)?d.pvault:[];
   d.vrev=typeof d.vrev==='number'?d.vrev:0;
   d.pvrev=typeof d.pvrev==='number'?d.pvrev:0;
@@ -1063,7 +1077,7 @@ function exportAll(){
     tpl:DB.tpl, ptpl:DB.ptpl, qtpl:DB.qtpl, mtpl:DB.mtpl, atpl:DB.atpl, polls:DB.polls, posts:DB.posts, revealed:DB.revealed,
     lastPostAt:DB.lastPostAt, clock:DB.clock, pending:DB.pending, nextId:DB.nextId,
     prevealed:DB.prevealed, plastAt:DB.plastAt,
-    vault:DB.vault||[], vrev:DB.vrev||0, pvault:DB.pvault||[], pvrev:DB.pvrev||0, tl:DB.tl||[],
+    vault:DB.vault||[], vrev:DB.vrev||0, pvault:DB.pvault||[], pvrev:DB.pvrev||0, tl:DB.tl||[], cal:DB.cal||[],
     market:DB.market, listed:DB.listed, owned:DB.owned, morders:DB.morders,
     credit:DB.credit, trades:DB.trades, bestRoi:DB.bestRoi, achs:DB.achs||[], marks:DB.marks||{}});
 }
@@ -1086,7 +1100,7 @@ function restoreBackup(text){
   if(!o||!o.__campustime) return toast('캠퍼스타임 백업 파일이 아닙니다');
   const cur=DB;
   DB=fresh();
-  ['people','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','atpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault','tl'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
+  ['people','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','atpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault','tl','cal'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
   ['revealed','lastPostAt','clock','nextId','prevealed','plastAt','credit','trades','bestRoi','vrev','pvrev'].forEach(k=>{ if(typeof o[k]==='number') DB[k]=o[k]; });
   if(typeof o.prevealed!=='number')
     DB.prevealed=Math.min(DB.polls.length,(DB.posts||[]).filter(p=>p.pk==='poll').length);
@@ -2279,6 +2293,112 @@ function tlHTML(){
       ${slotHTML()}
       <div class="fld"><button class="btn sub" data-act="tl-add">이 구간을 타임라인에 넣기</button></div>`;
 }
+function ymd(y,m,d){ return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+function parseYmd(s){
+  const m=String(s||'').match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  return m?{y:+m[1],m:+m[2],d:+m[3]}:null;
+}
+function calHit(ev, t){
+  const day=ymd(t.y,t.m,t.d);
+  const from=ev.from||day, to=ev.to||ev.from||day;
+  if(day<from || day>to) return false;
+  const a=ev.a==null?0:+ev.a, b=ev.b==null?24:+ev.b;
+  return a<t.b && b>t.a;
+}
+function calForBand(t){ return (DB.cal||[]).filter(e=>e&&e.text&&calHit(e,t)); }
+function calOnDay(day){
+  return (DB.cal||[]).filter(e=>{
+    const from=e.from||day, to=e.to||e.from||day;
+    return day>=from && day<=to;
+  });
+}
+function calEnsure(){
+  const w=worldDate();
+  if(!S.calY) S.calY=w.getFullYear();
+  if(!S.calM) S.calM=w.getMonth()+1;
+  if(!S.calDay) S.calDay=ymd(w.getFullYear(), w.getMonth()+1, w.getDate());
+}
+function calAdd(){
+  const el=$('#calText'); const text=String(S.calDraft||(el&&el.value)||'').trim();
+  if(!text) return toast('사건을 적어 주세요');
+  calEnsure();
+  const from=S.calDay;
+  let to=(($('#calTo')||{}).value||S.calTo||'').trim()||from;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(to)) to=from;
+  if(to<from) to=from;
+  let a=0, b=24;
+  if(S.calSlot!=null && S.calSlot!=='all'){
+    const s=SLOTS[+S.calSlot];
+    if(s){ a=s[0]; b=s[1]; }
+  }
+  DB.cal=DB.cal||[];
+  DB.cal.push({id:uid(), from, to, a, b, text, pct:Math.max(5, Math.min(50, +S.g.evPct||20))});
+  if(el) el.value='';
+  S.calDraft=''; S.calTo='';
+  save(); render();
+  toast(from===to?from+' 사건을 넣었습니다':from+'~'+to+' 사건을 넣었습니다');
+}
+function calDel(id){
+  DB.cal=(DB.cal||[]).filter(x=>String(x.id)!==String(id));
+  save(); render();
+}
+function calWhen(e){
+  const hours=(e.a===0&&e.b>=24)?'종일':e.a+'시~'+e.b+'시';
+  if(!e.to || e.to===e.from) return e.from+' · '+hours;
+  return e.from+'~'+e.to+' · '+hours;
+}
+function calHTML(){
+  calEnsure();
+  const y=S.calY, m=S.calM;
+  const first=new Date(y, m-1, 1);
+  const start=first.getDay();
+  const days=new Date(y, m, 0).getDate();
+  const cells=[];
+  for(let i=0;i<start;i++) cells.push(null);
+  for(let d=1;d<=days;d++) cells.push(d);
+  while(cells.length%7) cells.push(null);
+  const sel=S.calDay;
+  const hits=new Set();
+  (DB.cal||[]).forEach(e=>{
+    const from=parseYmd(e.from), to=parseYmd(e.to||e.from);
+    if(!from) return;
+    const a=new Date(from.y,from.m-1,from.d);
+    const b=new Date((to||from).y,(to||from).m-1,(to||from).d);
+    for(let dt=new Date(a); dt<=b; dt.setDate(dt.getDate()+1)){
+      if(dt.getFullYear()===y && dt.getMonth()+1===m) hits.add(dt.getDate());
+    }
+  });
+  const dayEvs=calOnDay(sel);
+  const slotLab=['0~6','6~12','12~18','18~24'];
+  return `<div class="note">날짜를 눌러 사건을 넣습니다. 그 날·구간의 프롬프트를 만들 때 자동으로 붙습니다.</div>
+      <div class="cal-nav">
+        <button type="button" class="icon-btn" data-cnav="-1" aria-label="이전 달">‹</button>
+        <b>${y}년 ${m}월</b>
+        <button type="button" class="icon-btn" data-cnav="1" aria-label="다음 달">›</button>
+      </div>
+      <div class="cal-wk">${'일월화수목금토'.split('').map(x=>`<span>${x}</span>`).join('')}</div>
+      <div class="cal-grid">${cells.map(d=>{
+        if(!d) return `<span></span>`;
+        const day=ymd(y,m,d);
+        return `<button type="button" class="cal-d ${day===sel?'on':''}" data-cday="${day}">${d}${hits.has(d)?'<i class="dot"></i>':''}</button>`;
+      }).join('')}</div>
+      <div class="sec">${sel} 사건 ${dayEvs.length}건</div>
+      ${dayEvs.map(e=>`<div class="cal-ev">
+        <span class="tt">${esc(e.text)}<span class="tm">${esc(calWhen(e))} · 화제성 ${e.pct||20}%</span></span>
+        <button type="button" class="x" data-act="cal-del" data-cal="${e.id}" aria-label="삭제">×</button>
+      </div>`).join('')}
+      <div class="fld"><label>사건</label>
+        <textarea class="ta" id="calText" style="min-height:70px" placeholder="한 줄. 예: 대동제 첫째 날, 중도 정전">${esc(S.calDraft||'')}</textarea></div>
+      <div class="fld"><label>끝나는 날 (비우면 하루)</label>
+        <input id="calTo" placeholder="${sel}" value="${esc(S.calTo||'')}"></div>
+      <div class="row"><div class="k">시간<small>하루 전체거나 구간만</small></div></div>
+      <div class="mk-cats" style="padding:4px 0 10px;border:0;background:none">
+        <button type="button" class="mk-cat ${S.calSlot==='all'?'on':''}" data-cslot="all">종일</button>
+        ${SLOTS.map((s,i)=>`<button type="button" class="mk-cat ${String(S.calSlot)===String(i)?'on':''}" data-cslot="${i}">${slotLab[i]}</button>`).join('')}
+      </div>
+      ${slider('evPct',S.g.evPct||'20','화제성','이 사건이 드러나는 글 비율')}
+      <div class="fld"><button class="btn" data-act="cal-add">이 날 사건으로 저장</button></div>`;
+}
 function rangeStamp(){
   const t=hourBand();
   return t.y+'년 '+t.m+'월 '+t.d+'일 '+t.a+'시~'+t.b+'시';
@@ -2367,12 +2487,20 @@ function buildAll(){
   jobs.push(qn?('- 투표 '+qn+'개. 소재 힌트: '+qtopic+'.\n  이미 '+DB.polls.length+'개의 투표가 쌓여 있다. 겹치는 소재는 피해라.'):'- 투표 0개. polls는 []');
   jobs.push(mn?('- 물품 '+mn+'개. [거래] 글. 주제 힌트: '+(mtopic||'인물과 어울리는 중고 물건')+'.\n  이미 '+(DB.market||[]).length+'개의 물품이 쌓여 있다. 같은 물건은 피해라.'):'- 물품 0개. market는 []');
 
-  const evs=String(S.g.ev||'').split(/\n/).map(s=>s.trim()).filter(Boolean);
-  const evOn=S.g.evOn==='1';
-  const ePct=Math.max(5, Math.min(50, +S.g.evPct||20));
-  const evN=evOn&&evs.length?Math.max(1, Math.round(total*ePct/100)):0;
+  const evs=[];
+  let ePct=0;
+  calForBand(t).forEach(e=>{
+    evs.push(e.text);
+    ePct=Math.max(ePct, +e.pct||20);
+  });
+  if(S.g.evOn==='1'){
+    String(S.g.ev||'').split(/\n/).map(s=>s.trim()).filter(Boolean).forEach(x=>{ if(evs.indexOf(x)<0) evs.push(x); });
+    if(evs.length) ePct=Math.max(ePct, +S.g.evPct||20);
+  }
+  ePct=Math.max(5, Math.min(50, ePct||20));
+  const evN=evs.length?Math.max(1, Math.round(total*ePct/100)):0;
   let evBlock='';
-  if(evOn&&evs.length){
+  if(evs.length){
     evBlock='지정 사건 (화제성 '+ePct+'% · '+total+'개 중 '+evN+'개에만):\n'
       +evs.map(x=>'- '+x).join('\n')+'\n'
       +'이 사건을 전체에 넣지 마라. 글·물품·투표에 걸쳐 '+evN+'개에만 드러나게 해라.\n'
@@ -2868,7 +2996,7 @@ function vMore(){
   return `<div class="pad gate">
     <button class="gate-btn" data-act="go-lab">
       <div class="gate-k">기계실</div>
-      <div class="gate-d">타임라인 · 분량 · 프롬프트</div>
+      <div class="gate-d">타임라인 · 달력 · 프롬프트</div>
     </button>
     <button class="gate-btn" data-act="go-stock">
       <div class="gate-k">창고</div>
@@ -2931,6 +3059,7 @@ function vLab(){
   return `<div class="pad">
     <div class="note" style="padding:4px 2px 10px">기계실 · 글을 만드는 곳. 시계와 저장은 창고입니다.</div>
     ${foldCard('line', '타임라인', rangeStamp(), tlHTML(), true)}
+    ${foldCard('cal', '달력', ((DB.cal||[]).length)+'건', calHTML(), true)}
     ${foldCard('qty', '분량', '글 '+n+' · 투표 '+qn+' · 물품 '+mn, qty, true)}
     ${foldCard('topic', '소재', S.g.arc!=='0'?'떡밥 켜짐':'힌트 · 떡밥 · 사건', topic, false)}
     ${foldCard('make', '만들기', S.gen?'복사해서 붙여넣기':'프롬프트 출력', make, true)}
@@ -3193,7 +3322,7 @@ function back(){
 
 document.addEventListener('click',e=>{
   if(!DB) return;
-  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl]');
+  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot]');
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
@@ -3222,6 +3351,23 @@ document.addEventListener('click',e=>{
     const x=DB.tl.find(z=>String(z.id)===String(d.tl));
     if(x){ pickTl(x); render(); }
     return;
+  }
+  if(d.cday){
+    S.calDay=d.cday;
+    const p=parseYmd(d.cday);
+    if(p){ S.calY=p.y; S.calM=p.m; }
+    return render();
+  }
+  if(d.cnav){
+    calEnsure();
+    S.calM+=(+d.cnav||0);
+    if(S.calM<1){ S.calM=12; S.calY--; }
+    if(S.calM>12){ S.calM=1; S.calY++; }
+    return render();
+  }
+  if(d.cslot!=null && d.cslot!==''){
+    S.calSlot=d.cslot;
+    return render();
   }
   if(d.item){
     const raw=d.item;
@@ -3280,6 +3426,8 @@ document.addEventListener('click',e=>{
     case 'go-settings': nav('more'); break;
     case 'go-lab': pickNextTl(); nav('lab'); break;
     case 'tl-add': tlAdd(); break;
+    case 'cal-add': calAdd(); break;
+    case 'cal-del': calDel(d.cal); break;
     case 'go-stock': nav('stock'); break;
     case 'enter': enterCampus(); break;
     case 'leave': leaveCampus(); break;
@@ -3428,6 +3576,8 @@ function keepInput(e){
   else if(id==='mtplBox') S.mtplDraft=e.target.value;
   else if(id==='atplBox') S.atplDraft=e.target.value;
   else if(id==='evBox') S.g.ev=e.target.value;
+  else if(id==='calText') S.calDraft=e.target.value;
+  else if(id==='calTo') S.calTo=e.target.value;
   else if(id==='mkPrice') S.mkPrice=e.target.value;
   else if(id==='ppaste') S.ppaste=e.target.value;
   else if(GMAP[id]) S.g[GMAP[id]]=e.target.value;
