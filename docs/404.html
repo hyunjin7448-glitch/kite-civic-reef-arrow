@@ -1000,7 +1000,7 @@ function empty(){
     market:[], listed:[], owned:[], morders:[], credit:10000, trades:0, bestRoi:0, achs:[], marks:{},
     polls:[], prevealed:0, plastAt:0,
     vault:[], vrev:0, pvault:[], pvrev:0, tl:[], cal:[],
-    people:[], me:{}
+    people:[], me:{}, lab:{}
   };
 }
 function fresh(){
@@ -1023,7 +1023,7 @@ function fresh(){
        age:'대학원 2년차',build:'175cm / 80kg',shape:'다부지고 어깨가 넓다',
        memo:'과 사무실 상주. 후드티에 슬리퍼, 늘 커피를 들고 있다.\n무뚝뚝해 보이지만 챙겨준다. 서류 실수에는 엄격하다.\n오후 5시 넘으면 자리에 없다.'}
     ],
-    me:{}
+    me:{}, lab:{}
   };
 }
 /* 저장: IndexedDB를 먼저 쓰고, 안 되면 localStorage로 물러난다.
@@ -1065,9 +1065,20 @@ function lsSave(){
     return false;
   }
 }
+const LABK='n,qn,mn,imgPct,peoplePct,topic,qtopic,mtopic,arc,arcPct,evOn,ev,evPct,rw'.split(',');
+function snapLab(){
+  if(!DB||!S.g) return;
+  DB.lab=DB.lab||{};
+  LABK.forEach(k=>{ if(S.g[k]!=null) DB.lab[k]=S.g[k]; });
+}
+function loadLab(){
+  if(!DB||!DB.lab||typeof DB.lab!=='object') return;
+  LABK.forEach(k=>{ if(DB.lab[k]!=null) S.g[k]=String(DB.lab[k]); });
+}
 function flush(){
   if(saveT){ clearTimeout(saveT); saveT=null; }
   if(!DB) return;
+  snapLab();
   if(idb){ idbSet(KEY,DB).then(ok=>{ if(!ok) lsSave(); }); return; }
   lsSave();
 }
@@ -1098,6 +1109,7 @@ function normalize(d){
     if(+o.due>1e12) o.due=(d.clock||0)+Math.max(0,+o.due-Date.now());
   });
   d.me=(d.me&&typeof d.me==='object'&&!Array.isArray(d.me))?d.me:{};
+  d.lab=(d.lab&&typeof d.lab==='object'&&!Array.isArray(d.lab))?d.lab:{};
   if(typeof d.credit!=='number') d.credit=10000;
   if(typeof d.trades!=='number') d.trades=0;
   if(typeof d.bestRoi!=='number') d.bestRoi=0;
@@ -1138,7 +1150,7 @@ function loadAll(){
 }
 function exportAll(){
   return JSON.stringify({__campustime:3, at:new Date().toISOString(),
-    people:DB.people, me:DB.me||{}, feed:DB.feed, sources:DB.sources, cfg:DB.cfg,
+    people:DB.people, me:DB.me||{}, lab:DB.lab||{}, feed:DB.feed, sources:DB.sources, cfg:DB.cfg,
     tpl:DB.tpl, ptpl:DB.ptpl, qtpl:DB.qtpl, mtpl:DB.mtpl, atpl:DB.atpl, polls:DB.polls, posts:DB.posts, revealed:DB.revealed,
     lastPostAt:DB.lastPostAt, clock:DB.clock, pending:DB.pending, nextId:DB.nextId,
     prevealed:DB.prevealed, plastAt:DB.plastAt,
@@ -1165,14 +1177,14 @@ function restoreBackup(text){
   if(!o||!o.__campustime) return toast('캠퍼스타임 백업 파일이 아닙니다');
   const cur=DB;
   DB=fresh();
-  ['people','me','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','atpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault','tl','cal'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
+  ['people','me','lab','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','atpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault','tl','cal'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
   ['revealed','lastPostAt','clock','nextId','prevealed','plastAt','credit','trades','bestRoi','vrev','pvrev'].forEach(k=>{ if(typeof o[k]==='number') DB[k]=o[k]; });
   if(typeof o.prevealed!=='number')
     DB.prevealed=Math.min(DB.polls.length,(DB.posts||[]).filter(p=>p.pk==='poll').length);
   if(typeof o.plastAt!=='number') DB.plastAt=DB.clock||0;
   DB.lastTick=Date.now();
   if(!Array.isArray(DB.feed)||!Array.isArray(DB.posts)){ DB=cur; return toast('백업 내용이 손상되었습니다'); }
-  normalize(DB); refreshQuotes(); flush(); render();
+  normalize(DB); loadLab(); refreshQuotes(); flush(); render();
   toast(`복원 완료 · 인물 ${DB.people.length}명 · 글 ${DB.feed.length}개 · 물품 ${(DB.market||[]).length}개`);
 }
 function mergePeople(text){
@@ -4003,7 +4015,7 @@ function keepInput(e){
   else if(id==='qtplBox') S.qtplDraft=e.target.value;
   else if(id==='mtplBox') S.mtplDraft=e.target.value;
   else if(id==='atplBox') S.atplDraft=e.target.value;
-  else if(id==='evBox') S.g.ev=e.target.value;
+  else if(id==='evBox'){ S.g.ev=e.target.value; save(); }
   else if(id==='calText') S.calDraft=e.target.value;
   else if(id==='mkPrice') S.mkPrice=e.target.value;
   else if(id==='meName'||id==='meBirth'||id==='meGender'||id==='meDept'||id==='meSid'||id==='meMemo'){
@@ -4012,7 +4024,7 @@ function keepInput(e){
     DB.me[map[id]]=e.target.value; save();
   }
   else if(id==='ppaste') S.ppaste=e.target.value;
-  else if(GMAP[id]) S.g[GMAP[id]]=e.target.value;
+  else if(GMAP[id]){ S.g[GMAP[id]]=e.target.value; save(); }
   else if(id&&id.indexOf('pr')===0&&S.sheet&&S.sheet.type==='person'){
     S.pd=S.pd||{}; S.pd[id]=e.target.value;
   }
@@ -4058,6 +4070,7 @@ window.addEventListener('pagehide',flush);
 /* ===================== 시작 ===================== */
 openIDB().then(db=>{ idb=db; return loadAll(); }).then(d=>{
   DB=d||fresh();
+  loadLab();
   DB.lastTick=Date.now();
   S.playing=false; S.cover='in';
   refreshQuotes();
@@ -4068,6 +4081,7 @@ openIDB().then(db=>{ idb=db; return loadAll(); }).then(d=>{
   checkQuota();
 }).catch(()=>{
   if(!DB||!valid(DB)) DB=fresh();
+  loadLab();
   DB.lastTick=Date.now();
   S.playing=false; S.cover='in';
   try{ refreshQuotes(); render(); }catch(e){}
