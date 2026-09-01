@@ -467,7 +467,7 @@
   <nav id="nav"></nav>
   <div id="cover"></div>
 </div>
-<input type="file" id="file" accept=".json,.txt,.js,text/plain,application/json" style="display:none">
+<input type="file" id="file" accept=".json,.txt,.js,text/plain,application/json" multiple style="display:none">
 <input type="file" id="pfile" accept="image/*" style="display:none">
 
 <script>
@@ -1869,10 +1869,17 @@ function extract(text){
   if(blocks.length===1) return blocks[0];
   return mergeBlocks(blocks);
 }
-function addFeed(text,name){
+function addFeed(text,name,opt){
+  opt=opt||{};
+  const quiet=!!opt.quiet;
+  const out={posts:0,polls:0,people:0,market:0,skip:0,err:''};
   let data;
   try{ data=extract(text); }
-  catch(e){ return toast('불러오기 실패: '+e.message); }
+  catch(e){
+    out.err=e.message||'불러오기 실패';
+    if(!quiet) toast('불러오기 실패: '+out.err);
+    return out;
+  }
   let added=0, madded=0;
   if(data&&!Array.isArray(data)){
     if(Array.isArray(data.people)){
@@ -1894,12 +1901,17 @@ function addFeed(text,name){
   data=data.filter(f=>!isMarketRow(f));
   const items=data.filter(f=>f&&typeof f==='object'&&f.title);
   if(!items.length){
+    out.people=added; out.market=madded;
     if(added||madded){
       if(madded) refreshQuotes();
-      save(); tick(); render();
-      return toast([added?`인물 ${added}명`:'', madded?`물품 ${madded}개`:''].filter(Boolean).join(' · ')+' 추가');
+      if(!quiet){ save(); tick(); render();
+        toast([added?`인물 ${added}명`:'', madded?`물품 ${madded}개`:''].filter(Boolean).join(' · ')+' 추가');
+      }
+      return out;
     }
-    return toast('title이 있는 글이 하나도 없습니다');
+    out.err='title이 있는 글이 하나도 없습니다';
+    if(!quiet) toast(out.err);
+    return out;
   }
   items.forEach(f=>{
     fillStamp(f);
@@ -1927,19 +1939,25 @@ function addFeed(text,name){
     DB.polls=sortWait(DB.polls.concat(newPolls), DB.prevealed);
     if(pdrained) DB.plastAt=DB.clock;
   }
+  out.posts=newPosts.length; out.polls=newPolls.length;
+  out.people=added; out.market=madded; out.skip=skipP+skipQ;
   const got=newPosts.length+newPolls.length+madded+added;
   if(!got){
-    return toast((skipP+skipQ)?'이미 있는 글입니다. 새 것만 가져옵니다':'title이 있는 글이 하나도 없습니다');
+    out.err=(skipP+skipQ)?'이미 있는 글입니다. 새 것만 가져옵니다':'title이 있는 글이 하나도 없습니다';
+    if(!quiet) toast(out.err);
+    return out;
   }
   DB.sources.push({name:(name||'붙여넣기')+(newPolls.length&&!newPosts.length?' (투표)':madded?' (물품)':''),
     count:newPosts.length+newPolls.length+madded});
   if(madded) refreshQuotes();
   markTlFromItems([].concat(newPosts, newPolls));
-  save(); tick(); render();
-  const skip=skipP+skipQ;
-  toast([newPosts.length?`글 ${newPosts.length}개`:'',newPolls.length?`투표 ${newPolls.length}개`:'',
-    added?`인물 ${added}명`:'',madded?`물품 ${madded}개`:''].filter(Boolean).join(' · ')+' 추가'
-    +(skip?` · 중복 ${skip}개 건너뜀`:''));
+  if(!quiet){
+    save(); tick(); render();
+    toast([newPosts.length?`글 ${newPosts.length}개`:'',newPolls.length?`투표 ${newPolls.length}개`:'',
+      added?`인물 ${added}명`:'',madded?`물품 ${madded}개`:''].filter(Boolean).join(' · ')+' 추가'
+      +(out.skip?` · 중복 ${out.skip}개 건너뜀`:''));
+  }
+  return out;
 }
 window.CAMPUS_INGEST=function(text,name){ addFeed(text,name||'그록'); };
 window.addEventListener('message',e=>{
@@ -3768,7 +3786,7 @@ function vStock(){
       <div class="fld">
         <textarea class="ta" id="paste" placeholder='[ { "title": "...", "body": "..." } ]'>${esc(S.pasted)}</textarea>
         <button class="btn" data-act="add-paste">붙여넣은 내용 추가</button>
-        <button class="btn sub" data-act="pick-file">파일에서 불러오기 (.json / .txt)</button>
+        <button class="btn sub" data-act="pick-file">파일에서 불러오기 (여러 개 가능)</button>
       </div>
       <div class="sec" style="padding-top:4px">글 ${DB.feed.length}개 (대기 ${waiting}) ·
         투표 ${DB.polls.length}개 (대기 ${pwait})</div>
@@ -4401,18 +4419,47 @@ document.addEventListener('keydown',e=>{
   sendComment();
 });
 document.addEventListener('focusout',()=>{ setTimeout(()=>{ if(S.dirty&&!busy()) redraw(); },120); });
+function readTextFile(f){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(String(r.result||''));
+    r.onerror=()=>rej(new Error('read'));
+    r.readAsText(f,'utf-8');
+  });
+}
 $('#file').addEventListener('change',e=>{
-  const f=e.target.files[0]; if(!f) return;
-  const mode=S.fileMode||'feed';
-  const r=new FileReader();
-  r.onload=()=>{
-    const txt=String(r.result);
-    if(mode==='backup'||txt.indexOf('"__campustime"')>=0) restoreBackup(txt);
-    else addFeed(txt,f.name);
-  };
-  r.onerror=()=>toast('파일을 읽지 못했습니다');
-  r.readAsText(f,'utf-8');
+  const files=[].slice.call(e.target.files||[]);
   e.target.value='';
+  if(!files.length) return;
+  const mode=S.fileMode||'feed';
+  (async()=>{
+    if(mode==='backup'){
+      try{ restoreBackup(await readTextFile(files[0])); }
+      catch(err){ toast('파일을 읽지 못했습니다'); }
+      return;
+    }
+    let posts=0,polls=0,people=0,market=0,skip=0,fail=0,back=0,ok=0;
+    for(let i=0;i<files.length;i++){
+      const f=files[i];
+      let txt;
+      try{ txt=await readTextFile(f); }
+      catch(err){ fail++; continue; }
+      if(txt.indexOf('"__campustime"')>=0){
+        if(files.length===1){ restoreBackup(txt); return; }
+        back++; continue;
+      }
+      const r=addFeed(txt, f.name, {quiet:1});
+      if(r.err && !r.posts && !r.polls && !r.people && !r.market){ fail++; skip+=r.skip||0; continue; }
+      posts+=r.posts||0; polls+=r.polls||0; people+=r.people||0; market+=r.market||0; skip+=r.skip||0; ok++;
+    }
+    save(); tick(); render();
+    const bits=[ok?`파일 ${ok}개`:'', posts?`글 ${posts}개`:'', polls?`투표 ${polls}개`:'',
+      people?`인물 ${people}명`:'', market?`물품 ${market}개`:''].filter(Boolean);
+    toast((bits.join(' · ')||'가져온 내용이 없습니다')+' 추가'
+      +(skip?` · 중복 ${skip}개 건너뜀`:'')
+      +(fail?` · 실패 ${fail}개`:'')
+      +(back?` · 백업 ${back}개는 건너뜀`:''));
+  })();
 });
 $('#pfile').addEventListener('change',e=>{
   const f=e.target.files[0]; e.target.value='';
