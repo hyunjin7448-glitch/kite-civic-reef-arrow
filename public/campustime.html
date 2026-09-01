@@ -733,17 +733,133 @@ const DEFAULT_MTPL=`너는 한국 대학 익명 커뮤니티의 중고장터에 
 지금 만들 것:
 - 물품 {개수}개.`;
 
+const DEFAULT_ATPL=`{시점}
+
+너는 한국 대학 익명 커뮤니티(에브리타임 형태)의 데이터를 한 번에 만든다.
+인사말·설명·코드펜스 없이 JSON 객체 하나만 출력해라. { 로 시작해서 } 로 끝나야 한다.
+
+{
+  "posts": [
+    {
+      "title": "글 제목",
+      "body": "본문. 줄바꿈은 \\n 으로.",
+      "likes": 42,
+      "scraps": 5,{떡밥필드}{사진필드}
+      "comments": [
+        { "text": "댓글 내용", "likes": 3 },
+        { "text": "글쓴이가 0번 댓글에 다는 답글", "writer": true, "reply": 0 }
+      ],
+      "choices": [
+        {
+          "text": "읽는 사람이 눌러서 달게 될 댓글",
+          "replies": [
+            { "text": "잠시 뒤 도착하는 답글", "likes": 2 },
+            { "text": "그 다음 답글", "writer": true }
+          ]
+        }
+      ]
+    }
+  ],
+  "polls": [
+    {
+      "title": "조별과제 vs 개인과제",
+      "body": "둘 중 하나만 평생 해야 한다면.",
+      "options": ["조별과제만", "개인과제만"],
+      "votes": [63, 412],
+      "likes": 42,{떡밥필드}
+      "comments": [
+        { "text": "댓글 내용", "likes": 3 }
+      ],
+      "choices": [
+        {
+          "text": "읽는 사람이 눌러서 달게 될 댓글",
+          "replies": [ { "text": "잠시 뒤 도착하는 답글", "likes": 2 } ]
+        }
+      ]
+    }
+  ],
+  "market": [
+    {
+      "title": "[거래] 공학용 계산기 팔아요",
+      "body": "연구실 정리하면서 나왔어요. 뒷면에 이름 새겨져 있습니다.",
+      "likes": 42,
+      "scraps": 5,
+      "name": "김대현 교수가 쓰던 공학용 계산기",
+      "owner": "김대현 교수",
+      "price": 1200,
+      "rarity": "희귀",
+      "traits": ["전자기기", "진지함"],{떡밥필드}
+      "comments": [
+        { "text": "연구실 물건이라 든든하다", "likes": 6 }
+      ],
+      "choices": [
+        {
+          "text": "상태 어떤가요",
+          "replies": [ { "text": "버튼 다 됩니다", "writer": true } ]
+        }
+      ]
+    }
+  ]
+}
+
+개수가 0인 종류는 해당 배열을 [] 로 비워라. 키(posts/polls/market)는 빼지 마라.
+
+게시글 규칙:
+- 시간 관련 항목(after 등)은 넣지 마라. 공개 속도는 앱에서 조절한다.
+- comments[].writer — 글쓴이 본인의 댓글이면 true.
+- comments[].reply — 몇 번째 댓글(0부터)에 대댓글로 달지. 없는 번호를 쓰지 마라.
+- choices — 글마다 3~4개. 읽는 사람이 버튼으로 고를 댓글이다.
+- choices[].replies — 그 선택지를 골랐을 때만 달리는 답글. 1~2개.
+- likes, scraps — 글은 20~250, 댓글은 0~30 사이에서 자연스럽게. 인기 없는 글도 섞어라.{사진규칙}
+- 한국 대학생이 실제로 쓰는 말투. 문장 짧게. 맞춤법이 조금 흐트러져도 된다.
+- choices 3~4개는 입장이 서로 달라야 한다. 동조 / 반대 / 질문 / 경험 공유로 방향을 나눠라.
+- replies는 그 선택지에만 어울리는 반응이어야 한다.
+- 제목은 낚시성으로 쓰지 말고 실제 게시판 제목처럼 담백하게.
+- 글마다 온도를 다르게. 하소연, 정보 공유, 사소한 질문, 자랑, 시비조를 섞어라.
+- 게시판은 하나뿐이니 분류하지 말고 한 줄기로 써라.
+
+투표 규칙:
+- options는 2개를 기본으로. 3~4개는 정말 필요할 때만. 문구는 12자를 넘기지 마라.
+- votes는 초기 득표. 30~500 사이에서 한쪽으로 기울게. 반반은 재미없다.
+- title은 "A vs B" 형태거나 질문형. body는 조건을 한 줄로.
+- comments 1~3개, choices 3~4개, replies 1~2개.
+- 둘 다 그럴듯한 양자택일. 명백한 정답 금지.
+
+물품 규칙:
+- 게시판에 [거래] 말머리로 올라가는 글이다. 제목은 반드시 "[거래] "로 시작해라.
+- owner — 아래 인물 목록에 있는 이름을 그대로. 목록에 없는 인물을 지어내지 마라. 골고루 배정해라.
+- name — 물건 이름. 누구 물건인지 드러나게. price 500~5000.
+- rarity — 흔함 / 보통 / 희귀. 희귀는 4분의 1을 넘기지 마라.
+- traits — 문자열 2개. 1번째 종류: 옷 / 교재 / 전자기기 / 생활 / 취향 / 문구 / 가구
+  2번째 기운: 천박함 / 허세 / 애잔함 / 진지함 / 귀여움 / 낡음 / 고급짐 / 민망함 / 과함 / 쓸쓸함
+  목록 밖 단어 금지. 한 묶음에서 종류·기운이 겹치지 않게.
+- body — 한두 문장. 특성 단어를 문장에 그대로 박지 마라.
+- comments·choices — 게시글과 같은 형식.
+
+공통:
+- 이모지 금지. 느낌표는 항목 하나에 최대 하나.
+- 실존 인물·학교·기업·브랜드 실명 금지. 학교는 "우리 학교", 건물은 "인문관 302"처럼.
+- 정치·종교·집단 비하, 성적인 내용, 개인 특정 정보 금지.
+- 댓글은 서로 다른 사람이 쓴 것처럼 말투와 길이를 다르게 하라.{떡밥규칙}{인물}
+
+지금 만들 것:
+{할일}`;
+
 const SLD={
   postGap:{list:[0.25,0.5,1,2,3,5,10,15,20,30],
     fmt:v=>v<1?Math.round(v*60)+'초':v+'분', ends:['15초','30분']},
   commentGap:{list:[0.1,0.25,0.5,0.75,1,1.5,2,3,5,10],
     fmt:v=>v<1?Math.round(v*60)+'초':v+'분', ends:['6초','10분']},
   replyDelay:{min:1,max:15,step:1, fmt:v=>v+'초', ends:['1초','15초']},
-  n:{min:1,max:30,step:1, fmt:v=>v+'개', ends:['1개','30개']},
-  qn:{min:1,max:20,step:1, fmt:v=>v+'개', ends:['1개','20개']},
+  n:{min:0,max:30,step:1, fmt:v=>v+'개', ends:['0개','30개']},
+  qn:{min:0,max:20,step:1, fmt:v=>v+'개', ends:['0개','20개']},
   imgPct:{min:0,max:100,step:10, fmt:v=>v==0?'없음':v+'%', ends:['없음','전부']},
   peoplePct:{min:0,max:100,step:10, fmt:v=>v==0?'없음':v+'%', ends:['없음','전부']},
-  mn:{min:1,max:20,step:1, fmt:v=>v+'개', ends:['1개','20개']},
+  mn:{min:0,max:20,step:1, fmt:v=>v+'개', ends:['0개','20개']},
+  yy:{min:2026,max:2036,step:1, fmt:v=>v+'년', ends:['2026','2036']},
+  mm:{min:1,max:12,step:1, fmt:v=>v+'월', ends:['1월','12월']},
+  ww:{min:1,max:5,step:1, fmt:v=>v+'주차', ends:['1주차','5주차']},
+  arcPct:{min:0,max:50,step:5, fmt:v=>v==0?'없음':v+'%', ends:['없음','50%']},
   mK:{list:[0.1,0.15,0.2,0.25,0.35,0.5,0.7,1], fmt:v=>String(v), ends:['약함','민감']},
   mHi:{list:[3,5,8,10,15,20], fmt:v=>(v*100)+'%', ends:['300%','2000%']},
   mLo:{list:[0.05,0.1,0.15,0.2,0.3], fmt:v=>Math.round(v*100)+'%', ends:['5%','30%']},
@@ -781,12 +897,13 @@ function cfgNum(k, fb){
 
 /* ===================== 상태 ===================== */
 let DB=null;
-const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen:'',pasted:'',genMode:'post',tplEdit:false,tplDraft:null,ptplEdit:false,ptplDraft:null,
-  qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
+const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen:'',pasted:'',genMode:'all',tplEdit:false,tplDraft:null,ptplEdit:false,ptplDraft:null,
+  qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,atplEdit:false,atplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
   backupText:'',ppaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
   fold:{import:1,make:1},
-  g:{n:'12',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
-     peoplePct:'30',arc:'1',qn:'8',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'8'},
+  g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
+     peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
+     yy:'2026',mm:'9',ww:'1'},
   pd:null};
 
 function fresh(){
@@ -794,7 +911,7 @@ function fresh(){
   return {
     feed:DEFAULT_FEED.map(x=>x).concat(market.map(asTradeFeed)), sources:[{name:'기본 데이터',count:DEFAULT_FEED.length+DEFAULT_MARKET.length}],
     posts:[], revealed:0, lastPostAt:0, clock:0, lastTick:Date.now(), pending:[], nextId:10,
-    cfg:Object.assign({},CFG_DEF), tpl:null, ptpl:null, qtpl:null, mtpl:null,
+    cfg:Object.assign({},CFG_DEF), tpl:null, ptpl:null, qtpl:null, mtpl:null, atpl:null,
     market, listed:[], owned:[], morders:[], credit:10000, trades:0, bestRoi:0, achs:[], marks:{},
     polls:DEFAULT_POLLS.map(x=>x), prevealed:0, plastAt:0,
     vault:[], vrev:0, pvault:[], pvrev:0,
@@ -920,7 +1037,7 @@ function loadAll(){
 function exportAll(){
   return JSON.stringify({__campustime:3, at:new Date().toISOString(),
     people:DB.people, feed:DB.feed, sources:DB.sources, cfg:DB.cfg,
-    tpl:DB.tpl, ptpl:DB.ptpl, qtpl:DB.qtpl, mtpl:DB.mtpl, polls:DB.polls, posts:DB.posts, revealed:DB.revealed,
+    tpl:DB.tpl, ptpl:DB.ptpl, qtpl:DB.qtpl, mtpl:DB.mtpl, atpl:DB.atpl, polls:DB.polls, posts:DB.posts, revealed:DB.revealed,
     lastPostAt:DB.lastPostAt, clock:DB.clock, pending:DB.pending, nextId:DB.nextId,
     prevealed:DB.prevealed, plastAt:DB.plastAt,
     vault:DB.vault||[], vrev:DB.vrev||0, pvault:DB.pvault||[], pvrev:DB.pvrev||0,
@@ -946,7 +1063,7 @@ function restoreBackup(text){
   if(!o||!o.__campustime) return toast('캠퍼스타임 백업 파일이 아닙니다');
   const cur=DB;
   DB=fresh();
-  ['people','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
+  ['people','feed','sources','cfg','tpl','ptpl','qtpl','mtpl','atpl','polls','posts','pending','market','listed','owned','morders','achs','marks','vault','pvault'].forEach(k=>{ if(o[k]!=null) DB[k]=o[k]; });
   ['revealed','lastPostAt','clock','nextId','prevealed','plastAt','credit','trades','bestRoi','vrev','pvrev'].forEach(k=>{ if(typeof o[k]==='number') DB[k]=o[k]; });
   if(typeof o.prevealed!=='number')
     DB.prevealed=Math.min(DB.polls.length,(DB.posts||[]).filter(p=>p.pk==='poll').length);
@@ -1935,12 +2052,68 @@ function mkTradeHTML(it,q){
     <div class="mk-hint">시세보다 ${mine?'싸게 팔면':'비싸게 사면'} 빨리 체결됩니다. 취소는 안 됩니다.</div>
   </div>`;
 }
-function buildByMode(){
-  const m=S.genMode||'post';
-  if(m==='poll') return buildPoll();
-  if(m==='market') return buildMarket();
-  return buildPrompt();
+function weekLabel(){
+  const y=Math.max(2026, Math.min(2036, +S.g.yy||2026));
+  const m=Math.max(1, Math.min(12, +S.g.mm||1));
+  const w=Math.max(1, Math.min(5, +S.g.ww||1));
+  return y+'년 '+m+'월 '+w+'주차';
 }
+function atpl(){ return (DB.atpl&&DB.atpl.trim())?DB.atpl:DEFAULT_ATPL; }
+function buildAll(){
+  const n=+S.g.n||0, qn=+S.g.qn||0, mn=+S.g.mn||0;
+  const gT=$('#gT'); if(gT) S.g.topic=gT.value;
+  const qT=$('#qT'); if(qT) S.g.qtopic=qT.value;
+  if(n+qn+mn<=0) return toast('게시글·투표·물품 개수를 하나 이상 올려 주세요');
+  const topic=String(S.g.topic||'').trim()||'대학 생활 전반';
+  const qtopic=String(S.g.qtopic||'').trim()||'대학 생활 전반';
+  const total=n+qn+mn;
+  const withArc=S.g.arc!=='0' && total>0;
+  const imgPct=+S.g.imgPct||0, withImg=n>0 && imgPct>0;
+  const pPct=DB.people.length?(+S.g.peoplePct||0):0;
+  const aPct=Math.max(0, Math.min(50, +S.g.arcPct||15));
+  const arcN=withArc?Math.max(1, Math.round(total*aPct/100)):0;
+  const when=weekLabel();
+  const whenBlock=when+' 게시물•물품•투표\n지금은 그 주다. 학사 일정·날씨·유행이 이 시점에 맞게. 다른 달·다른 주 이야기는 쓰지 마라.';
+
+  const imgField=withImg?'\n      "image": "텀블러만 놓인 빈 자리 사진",':'';
+  const imgRule=withImg
+    ?'\n- image — 실제 사진이 아니라 설명 한 줄이다. 화면에는 "📷 …" 상자로 뜬다.\n  파일 경로나 URL, 확장자를 쓰지 마라. 30자 이내. 게시글의 약 '+imgPct+'%에만 넣어라.'
+    : (n>0?'\n- image 필드는 넣지 마라.':'');
+  const arcField=withArc?'\n      "arc": "도서관 자리 사건",':'';
+  const arcRule=withArc
+    ?'\n- arc — 같은 사건을 묶는 이름표다. 게시글·물품·투표에 똑같은 문자열을 붙이면 앱이 이어 보여준다.\n'
+     +'  전체 묶음을 한 떡밥으로 만들지 마라. '+total+'개를 만들면 그중 '+arcN+'개 정도만 arc를 넣어라 (약 '+aPct+'%).\n'
+     +'  떡밥은 한두 개만. 한 떡밥은 글·물품·투표를 섞어 걸쳐도 된다.\n'
+     +'  예: 분실 글 + "[거래] 에어팟" + "주인 나타났냐" 투표. 이름표는 짧게.\n'
+     +'  나머지 항목에는 arc 키를 넣지 마라.'
+    :'\n- arc 필드는 게시글·물품·투표 어디에도 넣지 마라.';
+
+  let cast='';
+  if(pPct>0){
+    cast='\n\n'+ptpl()
+      .split('{명단}').join(personBlock())
+      .split('{빈도}').join('전체 글의 약 '+pPct+'%');
+  }
+
+  const jobs=[];
+  jobs.push(n?('- 게시글 '+n+'개. 주제 힌트: '+topic+'.\n  이미 '+DB.feed.filter(f=>!f.trade).length+'개의 글이 쌓여 있다. 겹치는 주제는 피해라.'):'- 게시글 0개. posts는 []');
+  jobs.push(qn?('- 투표 '+qn+'개. 소재 힌트: '+qtopic+'.\n  이미 '+DB.polls.length+'개의 투표가 쌓여 있다. 겹치는 소재는 피해라.'):'- 투표 0개. polls는 []');
+  jobs.push(mn?('- 물품 '+mn+'개. 인물 물건을 [거래] 글로.\n  이미 '+(DB.market||[]).length+'개의 물품이 쌓여 있다. 같은 물건은 피해라.'):'- 물품 0개. market는 []');
+
+  S.gen=atpl()
+    .split('{시점}').join(whenBlock)
+    .split('{떡밥필드}').join(arcField)
+    .split('{사진필드}').join(imgField)
+    .split('{사진규칙}').join(imgRule)
+    .split('{떡밥규칙}').join(arcRule)
+    .split('{인물}').join(cast)
+    .split('{할일}').join(jobs.join('\n'));
+  if(S.gen.indexOf(when)<0) S.gen=whenBlock+'\n\n'+S.gen;
+  S.fold=S.fold||{}; S.fold.out=1;
+  render();
+  const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
+}
+function buildByMode(){ return buildAll(); }
 function mtpl(){ return (DB.mtpl&&DB.mtpl.trim())?DB.mtpl:DEFAULT_MTPL; }
 function personBlock(){
   if(!DB.people.length) return '(인물이 없습니다)';
@@ -2567,56 +2740,34 @@ function vMore(){
 }
 function vLab(){
   const peopleN=DB.people.length;
-  const mode=S.genMode||'post';
-  const modeName=mode==='poll'?'투표':mode==='market'?'물품':'게시글';
-  const seg=`<div class="seg" style="padding:4px 0 12px">
-        <button class="${mode==='post'?'on':''}" data-gmode="post">게시글</button>
-        <button class="${mode==='poll'?'on':''}" data-gmode="poll">투표</button>
-        <button class="${mode==='market'?'on':''}" data-gmode="market">물품</button>
-      </div>`;
-  let make='', edit='';
-  if(mode==='poll'){
-    make=`${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수')}
-      <div class="fld"><label>소재 힌트</label>
-        <input id="qT" value="${esc(S.g.qtopic)}"></div>
-      <div class="fld"><button class="btn" data-act="gen-poll">투표 프롬프트 만들기</button></div>`;
-    edit=`<div class="fld"><button class="btn sub" data-act="qtpl-toggle">
-          ${S.qtplEdit?'투표 프롬프트 닫기':'기본 투표 프롬프트 수정'}${DB.qtpl?' (수정됨)':''}</button>
-        ${S.qtplEdit?`
-        <div class="note" style="padding:10px 0 6px"><b>{개수}</b> <b>{주제}</b> <b>{누적}</b> 이 자동으로 채워집니다.</div>
-        <textarea class="ta" id="qtplBox" style="min-height:240px">${esc(S.qtplDraft!=null?S.qtplDraft:qtpl())}</textarea>
-        <button class="btn" data-act="qtpl-save">이 내용으로 저장</button>
-        <button class="btn sub" data-act="qtpl-reset">기본값으로 되돌리기</button>`:''}</div>`;
-  }else if(mode==='market'){
-    make=`${slider('mn',S.g.mn,'물품 개수','한 번에 만들 매물 수')}
-      <div class="fld"><button class="btn" data-act="gen-market">물품 프롬프트 만들기</button></div>`;
-    edit=`<div class="fld"><button class="btn sub" data-act="mtpl-toggle">
-          ${S.mtplEdit?'물품 프롬프트 닫기':'기본 물품 프롬프트 수정'}${DB.mtpl?' (수정됨)':''}</button>
-        ${S.mtplEdit?`
-        <div class="note" style="padding:10px 0 6px"><b>{인물}</b> <b>{개수}</b> 이 자동으로 채워집니다.</div>
-        <textarea class="ta" id="mtplBox" style="min-height:240px">${esc(S.mtplDraft!=null?S.mtplDraft:mtpl())}</textarea>
-        <button class="btn" data-act="mtpl-save">이 내용으로 저장</button>
-        <button class="btn sub" data-act="mtpl-reset">기본값으로 되돌리기</button>`:''}</div>`;
-  }else{
-    make=`${slider('n',S.g.n,'글 개수','한 번에 만들 게시글 수')}
-      ${slider('imgPct',S.g.imgPct,'사진 넣는 비율','사진 설명이 붙는 글의 비율')}
-      <div class="fld"><label>주제 힌트</label>
+  const n=+S.g.n||0, qn=+S.g.qn||0, mn=+S.g.mn||0;
+  const make=`${slider('yy',S.g.yy,'연도','게시물이 올라온 해')}
+      ${slider('mm',S.g.mm,'월','1~12월')}
+      ${slider('ww',S.g.ww,'주차','그달의 몇 번째 주')}
+      ${slider('n',S.g.n,'게시글 개수','한 번에 만들 글 수. 0이면 안 만듦')}
+      ${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수. 0이면 안 만듦')}
+      ${slider('mn',S.g.mn,'물품 개수','한 번에 만들 거래 글 수. 0이면 안 만듦')}
+      ${slider('imgPct',S.g.imgPct,'사진 넣는 비율','사진 설명이 붙는 게시글의 비율')}
+      <div class="fld"><label>게시글 주제 힌트</label>
         <input id="gT" value="${esc(S.g.topic)}"></div>
-      <div class="row"><div class="k">떡밥 전개<small>한두 사건을 여러 글로 이어가기</small></div>
+      <div class="fld"><label>투표 소재 힌트</label>
+        <input id="qT" value="${esc(S.g.qtopic)}"></div>
+      <div class="row"><div class="k">떡밥 전개<small>끄면 안 붙음. 켜면 비율만큼만 글·물품·투표가 이어짐</small></div>
         <button class="pill ${S.g.arc!=='0'?'on':''}" data-act="toggle-arc">
           ${S.g.arc!=='0'?'켜짐':'꺼짐'}</button></div>
+      ${S.g.arc!=='0'?slider('arcPct',S.g.arcPct||'15','떡밥 비율','전체 글·물품·투표 중 떡밥이 붙는 비율'):''}
       ${peopleN
         ?slider('peoplePct',S.g.peoplePct,`인물 언급 비율 (등록 ${peopleN}명)`,'인물이 언급되는 글의 비율')
         :`<div class="note">인물 탭에 사람을 등록하면 인물 언급 옵션이 생깁니다.</div>`}
-      <div class="fld"><button class="btn" data-act="gen">게시글 프롬프트 만들기</button></div>`;
-    edit=`<div class="fld"><button class="btn sub" data-act="tpl-toggle">
-          ${S.tplEdit?'기본 프롬프트 닫기':'기본 프롬프트 수정'}${DB.tpl?' (수정됨)':''}</button>
-        ${S.tplEdit?`
+      <div class="fld"><button class="btn" data-act="gen">프롬프트 만들기</button></div>`;
+  const edit=`<div class="fld"><button class="btn sub" data-act="atpl-toggle">
+          ${S.atplEdit?'통합 프롬프트 닫기':'통합 프롬프트 수정'}${DB.atpl?' (수정됨)':''}</button>
+        ${S.atplEdit?`
         <div class="note" style="padding:10px 0 6px">중괄호 자리표시자는 만들 때 자동으로 채워집니다.
-          <b>{개수}</b> <b>{주제}</b> <b>{누적}</b> <b>{사진필드}</b> <b>{사진규칙}</b> <b>{인물}</b></div>
-        <textarea class="ta" id="tplBox" style="min-height:260px">${esc(S.tplDraft!=null?S.tplDraft:tpl())}</textarea>
-        <button class="btn" data-act="tpl-save">이 내용으로 저장</button>
-        <button class="btn sub" data-act="tpl-reset">기본값으로 되돌리기</button>`:''}
+          <b>{시점}</b> <b>{할일}</b> <b>{인물}</b> <b>{사진필드}</b> <b>{사진규칙}</b> <b>{떡밥필드}</b> <b>{떡밥규칙}</b></div>
+        <textarea class="ta" id="atplBox" style="min-height:280px">${esc(S.atplDraft!=null?S.atplDraft:atpl())}</textarea>
+        <button class="btn" data-act="atpl-save">이 내용으로 저장</button>
+        <button class="btn sub" data-act="atpl-reset">기본값으로 되돌리기</button>`:''}
         <button class="btn sub" data-act="ptpl-toggle" style="margin-top:8px">
           ${S.ptplEdit?'인물 프롬프트 닫기':'인물 프롬프트 수정'}${DB.ptpl?' (수정됨)':''}</button>
         ${S.ptplEdit?`
@@ -2625,16 +2776,14 @@ function vLab(){
         <textarea class="ta" id="ptplBox" style="min-height:200px">${esc(S.ptplDraft!=null?S.ptplDraft:ptpl())}</textarea>
         <button class="btn" data-act="ptpl-save">이 내용으로 저장</button>
         <button class="btn sub" data-act="ptpl-reset">기본값으로 되돌리기</button>`:''}</div>`;
-  }
   const out=S.gen?`<div class="fld">
       <textarea class="ta" id="genOut" style="min-height:200px" readonly>${esc(S.gen)}</textarea>
       <button class="btn" data-act="copy">프롬프트 복사</button></div>`:'';
   return `<div class="pad">
-    ${seg}
-    ${foldCard('make', modeName+' 만들기', '개수와 주제를 고른다',
-      `<div class="note">AI 채팅에 붙여넣을 ${modeName} 지시문을 만듭니다. 속도는 창고에서 조절합니다.</div>${make}`, true)}
-    ${foldCard('tpl', '기본 프롬프트', modeName+(DB.tpl||DB.ptpl||DB.qtpl||DB.mtpl?' · 수정됨':' · 원문 고치기'), edit, false)}
-    ${S.gen?foldCard('out', '만든 '+modeName+' 프롬프트', '복사해서 채팅에 붙여넣기', out, true):''}
+    ${foldCard('make', '한 번에 만들기', weekLabel()+' · 글 '+n+' · 투표 '+qn+' · 물품 '+mn,
+      `<div class="note">게시글·물품·투표를 한 프롬프트로 만듭니다. 개수를 0으로 두면 그 종류는 비웁니다. 속도는 창고에서 조절합니다.</div>${make}`, true)}
+    ${foldCard('tpl', '기본 프롬프트', (DB.atpl||DB.ptpl?'수정됨':'원문 고치기'), edit, false)}
+    ${S.gen?foldCard('out', '만든 프롬프트', '복사해서 채팅에 붙여넣기', out, true):''}
   </div>`;
 }
 function vStock(){
@@ -3036,7 +3185,13 @@ document.addEventListener('click',e=>{
       S.pasted=''; addFeed(v,'붙여넣기'); break; }
     case 'gen':
     case 'gen-poll':
-    case 'gen-market': buildByMode(); break;
+    case 'gen-market': buildAll(); break;
+    case 'atpl-toggle': S.atplEdit=!S.atplEdit; if(!S.atplEdit) S.atplDraft=null; render(); break;
+    case 'atpl-save': {
+      const el=$('#atplBox'); const v=el?el.value:'';
+      if(!v.trim()) return toast('내용이 비어 있습니다');
+      DB.atpl=v; S.atplDraft=null; save(); render(); toast('통합 프롬프트를 저장했습니다'); break; }
+    case 'atpl-reset': DB.atpl=null; S.atplDraft=null; save(); render(); toast('기본값으로 되돌렸습니다'); break;
     case 'mtpl-toggle': S.mtplEdit=!S.mtplEdit; if(!S.mtplEdit) S.mtplDraft=null; render(); break;
     case 'mtpl-save': {
       const el=$('#mtplBox'); const v=el?el.value:'';
@@ -3077,7 +3232,7 @@ document.addEventListener('click',e=>{
     case 'reset-yes': {
       try{ localStorage.removeItem(KEY); }catch(err){}
       if(idb) idbSet(KEY,null);
-      DB=fresh(); S.sheet=null; S.view='feed'; S.tab='feed'; S.mitem=null; S.gen=''; S.pasted=''; S.tplEdit=false; S.tplDraft=null; S.ptplEdit=false; S.ptplDraft=null; S.qtplEdit=false; S.qtplDraft=null; S.mtplEdit=false; S.mtplDraft=null;
+      DB=fresh(); S.sheet=null; S.view='feed'; S.tab='feed'; S.mitem=null; S.gen=''; S.pasted=''; S.tplEdit=false; S.tplDraft=null; S.ptplEdit=false; S.ptplDraft=null; S.qtplEdit=false; S.qtplDraft=null; S.mtplEdit=false; S.mtplDraft=null; S.atplEdit=false; S.atplDraft=null;
       flush(); tick(); render(); checkQuota(); toast('처음 상태로 돌아갔습니다'); break; }
   }
 });
@@ -3115,6 +3270,7 @@ function keepInput(e){
   else if(id==='ptplBox') S.ptplDraft=e.target.value;
   else if(id==='qtplBox') S.qtplDraft=e.target.value;
   else if(id==='mtplBox') S.mtplDraft=e.target.value;
+  else if(id==='atplBox') S.atplDraft=e.target.value;
   else if(id==='mkPrice') S.mkPrice=e.target.value;
   else if(id==='ppaste') S.ppaste=e.target.value;
   else if(GMAP[id]) S.g[GMAP[id]]=e.target.value;
