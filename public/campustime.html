@@ -39,7 +39,9 @@
   .icon-btn:active{background:var(--bg)}
   .quiet{color:#D6DAE0;font-size:17px;letter-spacing:2px}
   .h-clock{flex:0 0 auto;text-align:right;padding:0 4px 0 8px;line-height:1.2;
-    font-size:10.5px;font-weight:700;color:var(--sub);letter-spacing:-.02em;white-space:nowrap}
+    font-size:10.5px;font-weight:700;color:var(--sub);letter-spacing:-.02em;white-space:nowrap;
+    background:none;border:0;max-width:46%}
+  .h-clock.paused{color:var(--red)}
   .h-clock b{display:block;font-size:12px;font-weight:800;color:var(--ink)}
 
   main{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
@@ -460,7 +462,7 @@ const MIN=60000, HOUR=60*MIN, KEY='campustime:v3';
 const WORLD0=new Date(2026,8,1,8,0,0).getTime();
 const MKT_K=0.35, MKT_DECAY=0.1, MKT_LO=0.1, MKT_HI=10, MKT_HIST=6, MKT_WIN=10, MKT_SLOTS=4, MKT_FLOOR=0.1;
 const CFG_DEF={
-  postGap:2, commentGap:0.75, replyDelay:6, tod:true, timeScale:24,
+  postGap:2, commentGap:0.75, replyDelay:6, tod:true, timeScale:24, pause:false,
   mK:0.35, mHi:10, mLo:0.1, mSlots:4, mBack:1, mFill:1, mCred:1, mBand:0.3, mWin:10
 };
 const CFG_SLD={commentGap:1,replyDelay:1,timeScale:1,mSlots:1,mBack:1,mFill:1,mCred:1,mBand:1};
@@ -1438,11 +1440,22 @@ function renderCover(){
   }
 }
 function clkHTML(){
-  return `<div class="h-clock" id="worldClk">${esc(worldLabel())}</div>`;
+  const paused=!!(DB&&DB.cfg&&DB.cfg.pause);
+  return `<button type="button" class="h-clock${paused?' paused':''}" id="worldClk" data-act="clock-pause" aria-label="${paused?'시간 재개':'시간 정지'}">${esc(worldLabel())}${paused?' · 정지':''}</button>`;
 }
 function bumpClockUI(){
   const el=document.getElementById('worldClk');
-  if(el) el.textContent=worldLabel();
+  if(!el) return;
+  const paused=!!(DB.cfg&&DB.cfg.pause);
+  el.textContent=worldLabel()+(paused?' · 정지':'');
+  el.classList.toggle('paused', paused);
+}
+function togglePause(){
+  if(!DB) return;
+  DB.cfg.pause=!DB.cfg.pause;
+  DB.lastTick=Date.now();
+  save(); render();
+  toast(DB.cfg.pause?'시간을 멈췄습니다':'시간이 다시 흐릅니다');
 }
 function dripCGap(){
   return Math.max(0.05, DB.cfg.commentGap)*MIN*rate()*timeScale();
@@ -1455,7 +1468,7 @@ function todNow(){
 function rate(){ return (DB.cfg.tod===false)?1:todNow()[2]; }
 function tick(){
   if(!DB) return;
-  if(!S.playing){ DB.lastTick=Date.now(); return; }
+  if(!S.playing || (DB.cfg&&DB.cfg.pause)){ DB.lastTick=Date.now(); return; }
   const now=Date.now();
   DB.clock+=Math.max(0, now-(DB.lastTick||now))*timeScale();
   DB.lastTick=now;
@@ -3331,7 +3344,10 @@ function vStock(){
           <span class="c">${x.count}개</span></div>`).join('')}
       ${DB.sources.length>3?`<button class="more-btn" data-act="src-toggle">
         ${S.srcOpen?'접기':`이전 기록 ${DB.sources.length-3}개 더 보기`}</button>`:''}`;
-  const speed=`<div class="note">지금은 ${esc(worldLabel())} · ${esc(todNow()[3])}</div>
+  const speed=`<div class="note">지금은 ${esc(worldLabel())} · ${esc(todNow()[3])}${DB.cfg.pause?' · 정지 중':''}</div>
+      <div class="row"><div class="k">시간 정지
+        <small>${DB.cfg.pause?'멈춰 있습니다. 글·댓글·체결이 대기합니다.':'흐르는 중입니다. 시계를 눌러도 멈출 수 있습니다.'}</small></div>
+        <button class="pill ${DB.cfg.pause?'on':''}" data-act="clock-pause">${DB.cfg.pause?'정지 중':'흐르는 중'}</button></div>
       ${slider('timeScale',c.timeScale,'캠퍼스 시간 속도','현실보다 빨리 흐르는 사이트 안 시계')}
       ${slider('commentGap',c.commentGap,'댓글 달리는 간격','한 글에 댓글이 하나씩 붙는 속도')}
       ${slider('replyDelay',c.replyDelay,'답글 지연','선택지를 누른 뒤 답글이 오기까지 (실제 초)')}
@@ -3380,7 +3396,7 @@ function vStock(){
   return `<div class="pad">
     <div class="note" style="padding:4px 2px 10px">창고 · 글을 넣고 시계를 돌리는 곳. 프롬프트는 기계실입니다.</div>
     ${foldCard('import','불러오기',`대기 글 ${waiting} · 투표 ${pwait}`,load,true)}
-    ${foldCard('clock','시계','속도 · 간격 · 시간대',speed,false)}
+    ${foldCard('clock','시계',DB.cfg.pause?'정지 중':'속도 · 간격 · 시간대',speed,false)}
     ${foldCard('replay','다시보기',`보관함 ${vaultWait(false)+vaultWait(true)}개`,replay,false)}
     ${foldCard('mkset','시장','체결 · 크레딧',market,false)}
     ${foldCard('ppl','인물',DB.people.length+'명',ppl,false)}
@@ -3697,6 +3713,7 @@ document.addEventListener('click',e=>{
     case 'go-stock': nav('stock'); break;
     case 'enter': enterCampus(); break;
     case 'leave': leaveCampus(); break;
+    case 'clock-pause': togglePause(); break;
     case 'mk-buy': placeOrder('buy'); break;
     case 'mk-sell': placeOrder('sell'); break;
     case 'mk-cancel': cancelOrder(d.oid); break;
