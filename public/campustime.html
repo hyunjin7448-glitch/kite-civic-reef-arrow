@@ -2149,10 +2149,29 @@ function mkTradeHTML(it,q){
   </div>`;
 }
 function weekLabel(){
-  const y=Math.max(2026, Math.min(2036, +S.g.yy||2026));
-  const m=Math.max(1, Math.min(12, +S.g.mm||1));
-  const w=Math.max(1, Math.min(5, +S.g.ww||1));
-  return y+'년 '+m+'월 '+w+'주차';
+  const d=worldDate();
+  const w=Math.min(5, Math.max(1, Math.ceil(d.getDate()/7)));
+  return d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+w+'주차';
+}
+function clockStamp(){
+  const d=worldDate();
+  const days='일월화수목금토';
+  const h=d.getHours();
+  const ap=h<5?'새벽':h<12?'오전':h<18?'오후':'밤';
+  const h12=h%12||12;
+  const mm=String(d.getMinutes()).padStart(2,'0');
+  return weekLabel()+' · '+(d.getMonth()+1)+'월 '+d.getDate()+'일 '+days[d.getDay()]+'요일 '+ap+' '+h12+':'+mm;
+}
+function todHint(){
+  const h=worldDate().getHours();
+  if(h>=2&&h<7) return '새벽이다. 잠 못 잔 사람, 올빼미 야작, 조용한 한숨. 통학·첫 수업 이야기는 거의 없다.';
+  if(h>=7&&h<9) return '아침이다. 통학, 출석, 첫 수업, 아침 학식, 자리 잡기.';
+  if(h>=9&&h<12) return '오전 수업 시간이다. 강의, 출석, 빈 자리, 과제 공지.';
+  if(h>=12&&h<14) return '점심이다. 학식, 줄, 메뉴, 밥약, 빈 강의실.';
+  if(h>=14&&h<18) return '오후 수업 시간이다. 수업, 팀플, 과제, 동아리, 도서관.';
+  if(h>=18&&h<21) return '저녁이다. 수업 끝, 알바, 저녁, 야자 자리.';
+  if(h>=21) return '밤이다. 야작, 야식, 벼락치기, 자취, 내일 수업 걱정.';
+  return '자정 이후다. 잠 안 오는 사람, 밤샘, 조용한 하소연.';
 }
 function atpl(){ return (DB.atpl&&DB.atpl.trim())?DB.atpl:DEFAULT_ATPL; }
 function buildAll(){
@@ -2170,8 +2189,13 @@ function buildAll(){
   const aPct=Math.max(0, Math.min(50, +S.g.arcPct||15));
   const withArc=S.g.arc!=='0' && total>0 && aPct>0;
   const arcN=withArc?Math.max(1, Math.round(total*aPct/100)):0;
-  const when=weekLabel();
-  const whenBlock=when+' 게시물•물품•투표\n지금은 그 주다. 학사 일정·날씨·유행이 이 시점에 맞게. 다른 달·다른 주 이야기는 쓰지 마라.';
+  const when=clockStamp();
+  const whenBlock=when+' 게시물•물품•투표\n'
+    +'지금은 캠퍼스 시각이다. '+todNow()[3]+'. '+todHint()+'\n'
+    +'글·댓글·투표·거래는 전부 이 시간대에 올라온 것처럼 써라.\n'
+    +'아침 글에 야식을 넣거나, 밤에 첫 수업 출석 글을 쓰지 마라.\n'
+    +'학사 일정·날씨·유행도 이 날짜·이 주에 맞게. 다른 달·다른 주·다른 시간대 이야기는 쓰지 마라.\n'
+    +'제목이나 본문에 시계 숫자("오전 8시")를 박지 말고, 생활의 결로 보여라.';
 
   const imgField=withImg?'\n      "image": "텀블러만 놓인 빈 자리 사진",':'';
   const imgRule=withImg
@@ -2857,9 +2881,9 @@ function vMore(){
 function vLab(){
   const peopleN=DB.people.length;
   const n=+S.g.n||0, qn=+S.g.qn||0, mn=+S.g.mn||0;
-  const make=`${slider('yy',S.g.yy,'연도','게시물이 올라온 해')}
-      ${slider('mm',S.g.mm,'월','1~12월')}
-      ${slider('ww',S.g.ww,'주차','그달의 몇 번째 주')}
+  const make=`<div class="row"><div class="k">지금 캠퍼스 시각
+        <small>${esc(clockStamp())} · ${esc(todNow()[3])}</small></div></div>
+      <div class="note" style="padding-top:0">프롬프트 첫 줄에 이 시각이 들어갑니다. 글은 이 시간대 이야기로 맞춥니다.</div>
       ${slider('n',S.g.n,'게시글 개수','한 번에 만들 글 수. 0이면 안 만듦')}
       ${slider('qn',S.g.qn,'투표 개수','한 번에 만들 투표 수. 0이면 안 만듦')}
       ${slider('mn',S.g.mn,'물품 개수','한 번에 만들 거래 글 수. 0이면 안 만듦')}
