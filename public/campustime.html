@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-campustime="1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
@@ -1684,25 +1684,40 @@ function addFeed(text,name){
   });
   const polls=items.filter(f=>Array.isArray(f.options)&&f.options.length>=2);
   const posts=items.filter(f=>!(Array.isArray(f.options)&&f.options.length>=2));
-  if(posts.length){
+  const known=new Set([].concat(DB.feed||[], DB.posts||[], DB.polls||[]).map(x=>x&&x.title).filter(Boolean));
+  const skipP=posts.filter(f=>known.has(f.title)).length;
+  const skipQ=polls.filter(f=>known.has(f.title)).length;
+  const newPosts=posts.filter(f=>!known.has(f.title));
+  const newPolls=polls.filter(f=>!known.has(f.title));
+  if(newPosts.length){
     const drained=DB.revealed>=DB.feed.length;
-    DB.feed=DB.feed.concat(posts);
+    DB.feed=DB.feed.concat(newPosts);
     if(drained) DB.lastPostAt=DB.clock;
   }
-  if(polls.length){
+  if(newPolls.length){
     const pdrained=DB.prevealed>=DB.polls.length;
-    DB.polls=DB.polls.concat(polls);
+    DB.polls=DB.polls.concat(newPolls);
     if(pdrained) DB.plastAt=DB.clock;
   }
-  DB.sources.push({name:(name||'붙여넣기')+(polls.length&&!posts.length?' (투표)':madded?' (물품)':''),
-    count:items.length+madded});
-  const skipped=data.length-items.length;
+  const got=newPosts.length+newPolls.length+madded+added;
+  if(!got){
+    return toast((skipP+skipQ)?'이미 있는 글입니다. 새 것만 가져옵니다':'title이 있는 글이 하나도 없습니다');
+  }
+  DB.sources.push({name:(name||'붙여넣기')+(newPolls.length&&!newPosts.length?' (투표)':madded?' (물품)':''),
+    count:newPosts.length+newPolls.length+madded});
   if(madded) refreshQuotes();
   save(); tick(); render();
-  toast([posts.length?`글 ${posts.length}개`:'',polls.length?`투표 ${polls.length}개`:'',
+  const skip=skipP+skipQ;
+  toast([newPosts.length?`글 ${newPosts.length}개`:'',newPolls.length?`투표 ${newPolls.length}개`:'',
     added?`인물 ${added}명`:'',madded?`물품 ${madded}개`:''].filter(Boolean).join(' · ')+' 추가'
-    +(skipped?` · ${skipped}개 건너뜀`:''));
+    +(skip?` · 중복 ${skip}개 건너뜀`:''));
 }
+window.CAMPUS_INGEST=function(text,name){ addFeed(text,name||'그록'); };
+window.addEventListener('message',e=>{
+  const d=e.data;
+  if(!d||d.type!=='campustime-feed'||typeof d.text!=='string') return;
+  addFeed(d.text, d.name||'그록 채팅');
+});
 
 const KIND=['옷','교재','전자기기','생활','취향','문구','가구'];
 const VIBE=['천박함','허세','애잔함','진지함','귀여움','낡음','고급짐','민망함','과함','쓸쓸함'];
@@ -2927,11 +2942,13 @@ function vLab(){
   const out=S.gen?`<div class="fld">
       <textarea class="ta" id="genOut" style="min-height:160px" readonly>${esc(S.gen)}</textarea>
       <button class="btn" data-act="copy">프롬프트 복사</button></div>`:'';
-  const grok=`<div class="note">그록 채팅은 이 사이트 안에 끼워 넣을 수 없습니다. 그록이 외부 페이지에 자신을 넣는 것을 막습니다. 옆 창으로 열고, 나온 JSON은 아래에 붙여넣으면 됩니다.</div>
+  const grok=`<div class="note">그록 채팅은 이 사이트 안에 끼워 넣을 수 없습니다. 옆 창으로 연 뒤, 확장 프로그램으로 <b>이 채팅에서 새로 나온 글만</b> 가져오세요. 제목이 같은 글은 건너뜁니다.</div>
       <div class="fld">
         <button class="btn" data-act="open-grok">${S.gen?'프롬프트 복사하고 그록 열기':'그록 창 열기'}</button>
+        <a class="btn sub" href="/campustime-grok-ext.zip" download="campustime-grok-ext.zip" style="margin-top:8px;text-align:center;text-decoration:none">확장 프로그램 받기</a>
       </div>
-      <div class="fld"><label>그록이 준 내용</label>
+      <div class="note">받은 압축을 풀고, 브라우저 확장 프로그램 페이지에서 개발자 모드를 켠 다음 <b>압축 해제된 확장 프로그램을 로드</b>하세요. 그록 탭에서 아이콘을 누르면 됩니다.</div>
+      <div class="fld"><label>그록이 준 내용 (직접 붙여넣기)</label>
         <textarea class="ta" id="gpaste" style="min-height:140px" placeholder='그록 출력을 그대로 붙여넣기'>${esc(S.gpaste||'')}</textarea>
         <button class="btn" data-act="add-gpaste">게시판에 넣기</button>
       </div>`;

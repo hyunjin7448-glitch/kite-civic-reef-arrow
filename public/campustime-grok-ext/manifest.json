@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "캠퍼스타임 · 그록 긁기",
+  "version": "1.0.0",
+  "description": "한 그록 채팅에서 새로 나온 게시글만 캠퍼스타임으로 보냅니다. 이미 가져온 글은 건너뜁니다.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "그록에서 새 글 긁기"
+  },
+  "permissions": ["storage", "tabs", "activeTab"],
+  "host_permissions": [
+    "https://grok.com/*",
+    "https://*.grok.com/*",
+    "https://x.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://grok.com/*", "https://*.grok.com/*", "https://x.com/*", "https://x.com/i/grok*"],
+      "js": ["content-grok.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://localhost/*", "http://127.0.0.1/*", "https://*/*"],
+      "js": ["content-campus.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

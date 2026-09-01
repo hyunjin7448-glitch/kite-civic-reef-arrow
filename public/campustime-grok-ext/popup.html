@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;width:280px;font:13px/1.45 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#15171B;background:#fff}
+  h1{margin:0;padding:14px 14px 8px;font-size:14px;font-weight:800;letter-spacing:-.03em}
+  h1 span{color:#E8443C}
+  p{margin:0;padding:0 14px 12px;color:#8C939C;font-size:12px}
+  .btn{display:block;width:calc(100% - 28px);margin:0 14px 10px;background:#E8443C;color:#fff;border:0;border-radius:10px;padding:11px;font-weight:800;font-size:13px;cursor:pointer}
+  .btn.sub{background:#F2F3F5;color:#15171B}
+  .btn:disabled{opacity:.45}
+  #st{padding:0 14px 14px;font-size:12.5px;font-weight:700;color:#5C636B;min-height:1.4em}
+</style>
+</head>
+<body>
+  <h1>캠퍼스<span>타임</span></h1>
+  <p>이 그록 채팅에서 <b>아직 안 가져온 글만</b> 캠퍼스타임으로 보냅니다.</p>
+  <button class="btn" id="go">새 글 긁어 넣기</button>
+  <button class="btn sub" id="copy">새 글 JSON 복사</button>
+  <div id="st"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
