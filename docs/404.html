@@ -972,7 +972,7 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
   qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,atplEdit:false,atplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
   backupText:'',ppaste:'',gpaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
   playing:false,cover:'in',
-  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,mine:'me',photoFor:'',
+  calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,calTab:'view',mine:'me',photoFor:'',
   fold:{import:1,make:1},
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
@@ -2409,7 +2409,7 @@ function calAdd(){
   DB.cal=DB.cal||[];
   DB.cal.push({id:uid(), from, to, a, b, text, pct:Math.max(5, Math.min(50, +S.g.evPct||20))});
   if(el) el.value='';
-  S.calDraft=''; S.calPick=0;
+  S.calDraft=''; S.calPick=0; S.calTab='view';
   save(); render();
   toast(from===to?'하루 일정을 넣었습니다':from+'~'+to+' 일정을 넣었습니다');
 }
@@ -2452,18 +2452,15 @@ function calMonthCells(y,m){
   }
   return cells;
 }
-function calHTML(){
+function calGridHTML(opts){
   calEnsure();
   const y=S.calY, m=S.calM;
   const cells=calMonthCells(y,m);
   const sel=S.calDay;
-  const end=S.calTo&&S.calTo>=sel?S.calTo:sel;
+  const end=opts.range && S.calTo && S.calTo>=sel ? S.calTo : sel;
   const w=worldDate();
   const today=ymd(w.getFullYear(), w.getMonth()+1, w.getDate());
-  const slotLab=['0~6','6~12','12~18','18~24'];
-  const dayEvs=calOnDay(sel);
-  return `<div class="cal-page">
-      <div class="cal-top">
+  return `<div class="cal-top">
         <button type="button" class="icon-btn" data-cnav="-1" aria-label="이전 달">‹</button>
         <b>${y}년 ${m}월</b>
         <button type="button" class="cal-today" data-act="cal-today">오늘</button>
@@ -2474,22 +2471,34 @@ function calHTML(){
         const day=ymd(c.y,c.m,c.d);
         const evs=calOnDay(day);
         const extra=Math.max(0, evs.length-3);
-        const show=evs.slice(0,3);
+        const show=opts.chips?evs.slice(0,3):[];
         const cls=['cal-cell',
           c.w===0?'sun':'', c.w===6?'sat':'',
           c.mute?'mute':'',
           day===today?'today':'',
           day===sel?'on':'',
-          (day>sel&&day<=end)?'in':''
+          (opts.range && day>sel && day<=end)?'in':''
         ].filter(Boolean).join(' ');
         return `<button type="button" class="${cls}" data-cday="${day}">
           <span class="dn">${c.d}</span>
           <span class="cal-chips">${show.map(e=>{
             const col=calColor(e);
             return `<span class="cal-chip" style="background:${col[0]};color:${col[1]}">${esc(e.text)}</span>`;
-          }).join('')}${extra?`<span class="cal-chip more">+${extra}개 더</span>`:''}</span>
+          }).join('')}${extra&&opts.chips?`<span class="cal-chip more">+${extra}개 더</span>`:''}</span>
         </button>`;
-      }).join('')}</div>
+      }).join('')}</div>`;
+}
+function calTabs(){
+  return `<div class="mine-tabs">
+    <button type="button" data-caltab="view" class="${S.calTab!=='add'?'on':''}">달력</button>
+    <button type="button" data-caltab="add" class="${S.calTab==='add'?'on':''}">일정 추가</button>
+  </div>`;
+}
+function calViewHTML(){
+  calEnsure();
+  const sel=S.calDay;
+  const dayEvs=calOnDay(sel);
+  return `<div class="cal-page">${calGridHTML({chips:1,range:0})}
       <div class="cal-body">
         <div class="sec" style="padding:0 0 8px">${calLbl(sel)} · ${dayEvs.length}건</div>
         ${dayEvs.map(e=>{
@@ -2500,7 +2509,17 @@ function calHTML(){
             <button type="button" class="x" data-act="cal-del" data-cal="${e.id}" aria-label="삭제">×</button>
           </div>`;
         }).join('')||'<div class="note" style="padding:4px 0 10px">이 날 일정이 없습니다.</div>'}
-        <div class="sec" style="padding:12px 0 8px">새 일정</div>
+        <div class="fld"><button class="btn" data-act="cal-goto-add">이 날에 일정 추가</button></div>
+      </div>
+    </div>`;
+}
+function calAddHTML(){
+  calEnsure();
+  const sel=S.calDay;
+  const slotLab=['0~6','6~12','12~18','18~24'];
+  return `<div class="cal-page">${calGridHTML({chips:0,range:1})}
+      <div class="cal-body">
+        <div class="sec" style="padding:0 0 8px">새 일정</div>
         <div class="cal-range">
           <button type="button" class="pill-d ${S.calPick?'':'on'}" data-act="cal-pickfrom">
             <small>시작</small><b>${calLbl(sel)}</b></button>
@@ -2519,6 +2538,9 @@ function calHTML(){
         <div class="fld"><button class="btn" data-act="cal-add">일정 추가</button></div>
       </div>
     </div>`;
+}
+function calHTML(){
+  return calTabs()+(S.calTab==='add'?calAddHTML():calViewHTML());
 }
 function rangeStamp(){
   const t=hourBand();
@@ -3505,7 +3527,7 @@ function back(){
 
 document.addEventListener('click',e=>{
   if(!DB) return;
-  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot],[data-mine]');
+  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot],[data-mine],[data-caltab]');
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
@@ -3514,6 +3536,7 @@ document.addEventListener('click',e=>{
     nav(d.tab,d.tab); checkAchs(); return;
   }
   if(d.mine){ S.mine=d.mine; S.view='mine'; S.tab='mine'; lastView=null; return render(); }
+  if(d.caltab){ S.calTab=d.caltab; S.calPick=0; lastView=null; return render(); }
   if(d.open){
     S.post=+d.open; S.replyTo=null;
     const p=postOf(S.post);
@@ -3539,7 +3562,7 @@ document.addEventListener('click',e=>{
   if(d.cday){
     const p=parseYmd(d.cday);
     if(p){
-      if(S.calPick){
+      if(S.calTab==='add' && S.calPick){
         S.calTo=d.cday;
         if(S.calTo<S.calDay){ const t=S.calDay; S.calDay=S.calTo; S.calTo=t; }
         if(S.calTo===S.calDay) S.calTo='';
@@ -3549,6 +3572,7 @@ document.addEventListener('click',e=>{
         S.calDay=d.cday;
         S.calY=p.y; S.calM=p.m;
         if(S.calTo && S.calTo<S.calDay) S.calTo='';
+        if(S.calTab!=='add') S.calPick=0;
       }
     }
     return render();
@@ -3624,7 +3648,8 @@ document.addEventListener('click',e=>{
     case 'cal-add': calAdd(); break;
     case 'cal-del': calDel(d.cal); break;
     case 'cal-today': calToday(); break;
-    case 'cal-pickto': S.calPick=1; render(); toast('끝나는 날을 달력에서 누르세요'); break;
+    case 'cal-goto-add': S.calTab='add'; S.calPick=0; lastView=null; render(); break;
+    case 'cal-pickto': S.calTab='add'; S.calPick=1; render(); toast('끝나는 날을 달력에서 누르세요'); break;
     case 'cal-pickfrom': S.calPick=0; S.calTo=''; render(); break;
     case 'go-stock': nav('stock'); break;
     case 'enter': enterCampus(); break;
