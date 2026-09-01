@@ -135,7 +135,7 @@
   .sv{flex:0 0 auto;font-size:13px;font-weight:800;color:var(--red);min-width:52px;text-align:right}
   .sld{padding:2px 14px 16px}
   .sld input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;
-    background:none;outline:none;margin:0;display:block}
+    background:none;outline:none;margin:0;display:block;touch-action:pan-y}
   .sld input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--line)}
   .sld input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--line)}
   .sld input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
@@ -145,6 +145,9 @@
     border:2px solid var(--red);box-shadow:0 2px 6px rgba(0,0,0,.14);cursor:pointer}
   .sld input[type=range]:active::-webkit-slider-thumb{background:var(--red-dim)}
   .sld .ends{display:flex;justify-content:space-between;font-size:10.5px;color:var(--faint);margin-top:-2px}
+  .sld-h{width:100%;background:none;text-align:left}
+  .sld-h .sld-ch{flex:0 0 auto;color:var(--faint);font-size:12px;padding-left:6px}
+  .sld-h.on .sld-ch{color:var(--red)}
   .seg{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 14px}
   .seg button{border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12.5px;
     color:var(--sub);font-weight:600;background:#fff}
@@ -955,13 +958,17 @@ function sVal(key,cur){
 }
 function sText(key,cur){ const d=SLD[key]; return d.fmt(d.list?d.list[sVal(key,cur)]:+cur); }
 function slider(key,cur,label,hint){
+  S.sldOpen=S.sldOpen||{};
+  const open=!!S.sldOpen[key];
   const d=SLD[key];
   const max=d.list?d.list.length-1:d.max, min=d.list?0:d.min, step=d.list?1:d.step;
-  return `<div class="row"><div class="k">${label}${hint?`<small>${hint}</small>`:''}</div>
-      <span class="sv" id="sv-${key}">${sText(key,cur)}</span></div>
-    <div class="sld"><input type="range" id="sl-${key}" min="${min}" max="${max}" step="${step}"
+  return `<button type="button" class="row sld-h ${open?'on':''}" data-sld="${key}">
+      <div class="k">${label}${hint?`<small>${hint}</small>`:''}</div>
+      <span class="sv" id="sv-${key}">${sText(key,cur)}</span>
+      <span class="sld-ch">${open?'▾':'▸'}</span></button>`
+    +(open?`<div class="sld"><input type="range" id="sl-${key}" min="${min}" max="${max}" step="${step}"
       value="${sVal(key,cur)}" aria-label="${label}">
-      <div class="ends"><span>${d.ends[0]}</span><span>${d.ends[1]}</span></div></div>`;
+      <div class="ends"><span>${d.ends[0]}</span><span>${d.ends[1]}</span></div></div>`:'');
 }
 function cfgNum(k, fb){
   const v=DB&&DB.cfg?+DB.cfg[k]:NaN;
@@ -975,7 +982,7 @@ const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen
   backupText:'',ppaste:'',gpaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
   playing:false,cover:'in',
   calY:null,calM:null,calDay:'',calSlot:'all',calDraft:'',calTo:'',calPick:0,calTab:'view',mine:'me',photoFor:'',bandLock:0,
-  fold:{import:1,make:1},
+  fold:{import:1,make:1}, sldOpen:{},
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
      mtopic:'교재, 전자기기, 옷, 자취 살림',
@@ -3586,7 +3593,7 @@ function back(){
 
 document.addEventListener('click',e=>{
   if(!DB) return;
-  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot],[data-mine],[data-caltab]');
+  const t=e.target.closest('[data-tab],[data-act],[data-open],[data-item],[data-like],[data-scrap],[data-clike],[data-reply],[data-choice],[data-cfg],[data-person],[data-vote],[data-gmode],[data-ment],[data-trend],[data-fold],[data-mkcat],[data-slot],[data-tl],[data-cday],[data-cnav],[data-cslot],[data-mine],[data-caltab],[data-sld]');
   if(!t) return;
   const d=t.dataset;
   if(d.tab){
@@ -3596,6 +3603,11 @@ document.addEventListener('click',e=>{
   }
   if(d.mine){ S.mine=d.mine; S.view='mine'; S.tab='mine'; lastView=null; return render(); }
   if(d.caltab){ S.calTab=d.caltab; S.calPick=0; lastView=null; return render(); }
+  if(d.sld){
+    S.sldOpen=S.sldOpen||{};
+    S.sldOpen[d.sld]=S.sldOpen[d.sld]?0:1;
+    return render();
+  }
   if(d.open){
     S.post=+d.open; S.replyTo=null;
     const p=postOf(S.post);
