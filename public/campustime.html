@@ -928,7 +928,7 @@ function cfgNum(k, fb){
 let DB=null;
 const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen:'',pasted:'',genMode:'all',tplEdit:false,tplDraft:null,ptplEdit:false,ptplDraft:null,
   qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,atplEdit:false,atplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
-  backupText:'',ppaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
+  backupText:'',ppaste:'',gpaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
   playing:false,cover:'in',
   fold:{import:1,make:1},
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
@@ -2244,7 +2244,7 @@ function buildAll(){
     .split('{할일}').join(jobs.join('\n'));
   if(S.gen.indexOf(when)<0) S.gen=whenBlock+'\n\n'+S.gen;
   if(evBlock && S.gen.indexOf('지정 사건')<0) S.gen=S.gen+'\n\n'+evBlock;
-  S.fold=S.fold||{}; S.fold.out=1;
+  S.fold=S.fold||{}; S.fold.out=1; S.fold.grok=1;
   render();
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
 }
@@ -2925,13 +2925,22 @@ function vLab(){
         <button class="btn" data-act="ptpl-save">이 내용으로 저장</button>
         <button class="btn sub" data-act="ptpl-reset">기본값으로 되돌리기</button>`:''}</div>`;
   const out=S.gen?`<div class="fld">
-      <textarea class="ta" id="genOut" style="min-height:200px" readonly>${esc(S.gen)}</textarea>
+      <textarea class="ta" id="genOut" style="min-height:160px" readonly>${esc(S.gen)}</textarea>
       <button class="btn" data-act="copy">프롬프트 복사</button></div>`:'';
+  const grok=`<div class="note">그록 채팅은 이 사이트 안에 끼워 넣을 수 없습니다. 그록이 외부 페이지에 자신을 넣는 것을 막습니다. 옆 창으로 열고, 나온 JSON은 아래에 붙여넣으면 됩니다.</div>
+      <div class="fld">
+        <button class="btn" data-act="open-grok">${S.gen?'프롬프트 복사하고 그록 열기':'그록 창 열기'}</button>
+      </div>
+      <div class="fld"><label>그록이 준 내용</label>
+        <textarea class="ta" id="gpaste" style="min-height:140px" placeholder='그록 출력을 그대로 붙여넣기'>${esc(S.gpaste||'')}</textarea>
+        <button class="btn" data-act="add-gpaste">게시판에 넣기</button>
+      </div>`;
   return `<div class="pad">
     ${foldCard('make', '한 번에 만들기', weekLabel()+' · 글 '+n+' · 투표 '+qn+' · 물품 '+mn,
       `<div class="note">게시글·물품·투표를 한 프롬프트로 만듭니다. 개수를 0으로 두면 그 종류는 비웁니다. 속도는 창고에서 조절합니다.</div>${make}`, true)}
+    ${foldCard('grok', '그록', '옆 창 · 결과 붙여넣기', grok, true)}
     ${foldCard('tpl', '기본 프롬프트', (DB.atpl||DB.ptpl?'수정됨':'원문 고치기'), edit, false)}
-    ${S.gen?foldCard('out', '만든 프롬프트', '복사해서 채팅에 붙여넣기', out, true):''}
+    ${S.gen?foldCard('out', '만든 프롬프트', '복사해서 그록에 붙여넣기', out, true):''}
   </div>`;
 }
 function vStock(){
@@ -3182,6 +3191,13 @@ function buildPrompt(){
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
 }
 function copyPrompt(){ copyText(S.gen,'genOut'); }
+function openGrok(){
+  if(S.gen && navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(S.gen).catch(()=>{});
+  const w=window.open('https://grok.com','campustime-grok','popup=yes,width=440,height=800');
+  if(!w) toast('팝업이 막혔습니다. 브라우저에서 허용해 주세요');
+  else toast(S.gen?'프롬프트 복사됨 · 그록 창에 붙여넣으세요':'그록 창을 열었습니다');
+}
 function copyText(t,elId){
   if(!t) return;
   if(navigator.clipboard&&navigator.clipboard.writeText){
@@ -3335,6 +3351,11 @@ document.addEventListener('click',e=>{
       const el=$('#paste'); const v=el?el.value:'';
       if(!v.trim()) return toast('붙여넣은 내용이 없습니다');
       S.pasted=''; addFeed(v,'붙여넣기'); break; }
+    case 'add-gpaste': {
+      const el=$('#gpaste'); const v=el?el.value:(S.gpaste||'');
+      if(!String(v).trim()) return toast('붙여넣은 내용이 없습니다');
+      S.gpaste=''; addFeed(v,'그록'); break; }
+    case 'open-grok': openGrok(); break;
     case 'gen':
     case 'gen-poll':
     case 'gen-market': buildAll(); break;
@@ -3425,6 +3446,7 @@ function keepInput(e){
   else if(id==='mtplBox') S.mtplDraft=e.target.value;
   else if(id==='atplBox') S.atplDraft=e.target.value;
   else if(id==='evBox') S.g.ev=e.target.value;
+  else if(id==='gpaste') S.gpaste=e.target.value;
   else if(id==='mkPrice') S.mkPrice=e.target.value;
   else if(id==='ppaste') S.ppaste=e.target.value;
   else if(GMAP[id]) S.g[GMAP[id]]=e.target.value;
