@@ -365,6 +365,26 @@
   nav button i{font-style:normal;font-size:20px;line-height:1}
   nav button.on{color:var(--red)}
 
+  #cover{display:none;position:absolute;inset:0;z-index:50;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;
+    background:var(--card);padding:32px 32px calc(48px + var(--safe-b));
+    animation:opIn .4s ease}
+  #cover.on{display:flex}
+  #cover.out{background:#14161A;color:#F4F5F7}
+  @keyframes opIn{from{opacity:0}to{opacity:1}}
+  .op-mark{font-size:11px;font-weight:800;letter-spacing:.22em;color:var(--red);margin-bottom:16px}
+  #cover.out .op-mark{color:#E8443C}
+  .op-title{font-size:34px;font-weight:900;letter-spacing:-.06em;line-height:1.15;color:var(--ink)}
+  .op-title span{color:var(--red)}
+  #cover.out .op-title{color:#F4F5F7}
+  .op-date{margin-top:20px;font-size:15px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+  #cover.out .op-date{color:#F4F5F7}
+  .op-sub{margin-top:8px;font-size:13px;color:var(--sub);line-height:1.65}
+  #cover.out .op-sub{color:#9AA1AA}
+  .op-go{margin-top:40px;min-width:180px;background:var(--red);color:#fff;border-radius:12px;
+    padding:14px 28px;font-size:15px;font-weight:800;letter-spacing:-.02em}
+  .op-go:active{opacity:.88}
+
   .sheet-bg{position:fixed;inset:0;background:rgba(20,22,26,.42);z-index:30;display:flex;
     align-items:flex-end;justify-content:center}
   .sheet{width:100%;max-width:480px;background:var(--card);border-radius:20px 20px 0 0;
@@ -386,6 +406,7 @@
   <header id="hdr"></header>
   <main id="app"></main>
   <nav id="nav"></nav>
+  <div id="cover"></div>
 </div>
 <input type="file" id="file" accept=".json,.txt,.js,text/plain,application/json" style="display:none">
 <input type="file" id="pfile" accept="image/*" style="display:none">
@@ -908,6 +929,7 @@ let DB=null;
 const S={tab:'feed',view:'feed',post:null,mitem:null,sheet:null,replyTo:null,gen:'',pasted:'',genMode:'all',tplEdit:false,tplDraft:null,ptplEdit:false,ptplDraft:null,
   qtplEdit:false,qtplDraft:null,mtplEdit:false,mtplDraft:null,atplEdit:false,atplDraft:null,quota:null,dirty:false,mkPrice:'',mkCat:'',
   backupText:'',ppaste:'',fileMode:'feed',srcOpen:false,flash:null,ment:null,tick:0,q:'',achQ:[],
+  playing:false,cover:'in',
   fold:{import:1,make:1},
   g:{n:'8',imgPct:'30',topic:'시험 기간, 학식, 통학, 팀플, 수강신청, 동아리, 인턴, 자취방',
      peoplePct:'30',arc:'1',arcPct:'15',qn:'4',qtopic:'수업, 학식, 통학, 연애, 알바, 자취, 학점',mn:'4',
@@ -1267,6 +1289,44 @@ function worldLabel(){
   const mm=String(d.getMinutes()).padStart(2,'0');
   return (d.getMonth()+1)+'.'+d.getDate()+' '+days[d.getDay()]+' '+ap+' '+h12+':'+mm;
 }
+function worldLong(){
+  const d=worldDate();
+  const days='일월화수목금토';
+  return d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 '+days[d.getDay()]+'요일';
+}
+function enterCampus(){
+  S.playing=true; S.cover='';
+  if(DB) DB.lastTick=Date.now();
+  S.view='feed'; S.tab='feed'; lastView=null;
+  render();
+  tick(); pulse();
+}
+function leaveCampus(){
+  S.playing=false; S.cover='out';
+  if(DB){ DB.lastTick=Date.now(); flush(); }
+  render();
+}
+function renderCover(){
+  const g=document.getElementById('cover');
+  if(!g) return;
+  if(!S.cover){ g.className=''; g.innerHTML=''; return; }
+  const tod=(todNow()[3]||'').split('·')[0].trim();
+  if(S.cover==='in'){
+    g.className='on';
+    g.innerHTML=`<div class="op-mark">CAMPUS</div>
+      <div class="op-title">캠퍼스<span>타임</span></div>
+      <div class="op-date">${esc(worldLong())}</div>
+      <div class="op-sub">${esc(tod)} · 들어가면 캠퍼스 시간이 흐릅니다</div>
+      <button class="op-go" data-act="enter">들어가기</button>`;
+  }else{
+    g.className='on out';
+    g.innerHTML=`<div class="op-mark">CAMPUS</div>
+      <div class="op-title">오늘은 여기까지</div>
+      <div class="op-date">${esc(worldLong())}</div>
+      <div class="op-sub">${esc(worldLabel())}에 나왔습니다.<br>다시 들어가기 전까지 시간은 멈춰 있습니다.</div>
+      <button class="op-go" data-act="enter">다시 들어가기</button>`;
+  }
+}
 function clkHTML(){
   return `<div class="h-clock" id="worldClk">${esc(worldLabel())}</div>`;
 }
@@ -1288,6 +1348,7 @@ function todNow(){
 function rate(){ return (DB.cfg.tod===false)?1:todNow()[2]; }
 function tick(){
   if(!DB) return;
+  if(!S.playing){ DB.lastTick=Date.now(); return; }
   const now=Date.now();
   DB.clock+=Math.max(0, now-(DB.lastTick||now))*timeScale();
   DB.lastTick=now;
@@ -1329,7 +1390,7 @@ function tick(){
   checkAchs();
 }
 function pulse(){
-  if(!DB) return;
+  if(!DB||!S.playing) return;
   const now=Date.now(); let ch=false;
   if(DB.pending&&DB.pending.length){
     DB.pending=DB.pending.filter(q=>{
@@ -2339,7 +2400,7 @@ function render(){
   const fval=fid?ae.value:null;
   let fsel=null; try{ fsel=fid?ae.selectionStart:null; }catch(e){}
 
-  renderHeader(); renderNav();
+  renderHeader(); renderNav(); renderCover();
   const map={feed:vFeed,poll:vPoll,detail:vDetail,hot:vHot,mine:vMine,people:vPeople,mentions:vMentions,search:vSearch,more:vMore,lab:vLab,stock:vStock,market:vMarket,mitem:vMItem};
   app.innerHTML=(map[S.view]||vFeed)();
   lastView=S.view;
@@ -2634,7 +2695,7 @@ function tickHTML(){
     <span class="ch">›</span></button>`;
 }
 function rotateTick(){
-  if(!DB||!(S.view==='feed'||S.view==='poll')) return;
+  if(!DB||!S.playing||!(S.view==='feed'||S.view==='poll')) return;
   const list=trendList(); if(list.length<2) return;
   S.tick=(S.tick+1)%list.length;
   const el=document.querySelector('.tick');
@@ -2786,6 +2847,10 @@ function vMore(){
     <button class="gate-btn" data-act="go-stock">
       <div class="gate-k">창고</div>
       <div class="gate-d">불러오기, 속도, 백업</div>
+    </button>
+    <button class="gate-btn" data-act="leave">
+      <div class="gate-k">나가기</div>
+      <div class="gate-d">캠퍼스를 떠나면 시간이 멈춥니다</div>
     </button>
   </div>`;
 }
@@ -3189,6 +3254,8 @@ document.addEventListener('click',e=>{
     case 'go-settings': nav('more'); break;
     case 'go-lab': nav('lab'); break;
     case 'go-stock': nav('stock'); break;
+    case 'enter': enterCampus(); break;
+    case 'leave': leaveCampus(); break;
     case 'mk-buy': placeOrder('buy'); break;
     case 'mk-sell': placeOrder('sell'); break;
     case 'mk-down': {
@@ -3370,7 +3437,8 @@ $('#pfile').addEventListener('change',e=>{
   shrinkPhoto(f,url=>{ S.pd=S.pd||{}; S.pd.photo=url; render(); toast('사진을 넣었습니다'); });
 });
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden) flush(); else { tick(); pulse(); }
+  if(document.hidden) flush();
+  else if(S.playing){ tick(); pulse(); }
 });
 window.addEventListener('pagehide',flush);
 
@@ -3378,8 +3446,9 @@ window.addEventListener('pagehide',flush);
 openIDB().then(db=>{ idb=db; return loadAll(); }).then(d=>{
   DB=d||fresh();
   DB.lastTick=Date.now();
+  S.playing=false; S.cover='in';
   refreshQuotes();
-  try{ render(); tick(); pulse(); checkAchs(); }catch(e){}
+  try{ render(); }catch(e){}
   setInterval(tick,3000);
   setInterval(pulse,1000);
   setInterval(rotateTick,4000);
@@ -3387,7 +3456,8 @@ openIDB().then(db=>{ idb=db; return loadAll(); }).then(d=>{
 }).catch(()=>{
   if(!DB||!valid(DB)) DB=fresh();
   DB.lastTick=Date.now();
-  try{ refreshQuotes(); render(); tick(); }catch(e){}
+  S.playing=false; S.cover='in';
+  try{ refreshQuotes(); render(); }catch(e){}
   setInterval(tick,3000); setInterval(pulse,1000);
 });
 </script>
