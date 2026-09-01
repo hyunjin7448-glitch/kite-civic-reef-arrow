@@ -3076,6 +3076,20 @@ function buildAll(opt){
   render();
   const o=$('#genOut'); if(o) o.scrollIntoView({block:'center'});
 }
+function randInt(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
+function genRand(){
+  S.g.n=String(randInt(5,15));
+  S.g.qn=String(randInt(1,5));
+  S.g.mn=String(randInt(1,5));
+  S.g.arc=Math.random()<0.5?'1':'0';
+  S.g.arcPct=String(randInt(1,10)*5);
+  if(DB.people && DB.people.length) S.g.peoplePct=String(randInt(0,10)*10);
+  save();
+  buildAll();
+  toast('글 '+S.g.n+' · 투표 '+S.g.qn+' · 물품 '+S.g.mn
+    +(S.g.arc==='1'?' · 떡밥 '+S.g.arcPct+'%':' · 떡밥 끔')
+    +(DB.people&&DB.people.length?' · 인물 '+S.g.peoplePct+'%':''));
+}
 function buildByMode(){ return buildAll(); }
 function mtpl(){ return (DB.mtpl&&DB.mtpl.trim())?DB.mtpl:DEFAULT_MTPL; }
 function personBlock(){
@@ -3672,7 +3686,8 @@ function vLab(){
         ?slider('peoplePct',S.g.peoplePct,`인물 언급 비율 (등록 ${peopleN}명)`,'인물이 언급되는 글의 비율')
         :`<div class="note">나 탭에 사람을 등록하면 인물 언급 옵션이 생깁니다.</div>`}`;
   const make=`<div class="note">만든 프롬프트를 복사해 그록에 넣고, 나온 JSON은 창고 · 불러오기에 붙입니다.</div>
-      <div class="fld"><button class="btn" data-act="gen">프롬프트 만들기</button></div>
+      <div class="fld"><button class="btn" data-act="gen">프롬프트 만들기</button>
+        <button class="btn sub" data-act="gen-rand">랜덤으로 만들기</button></div>
       ${S.gen?`<div class="fld">
         <textarea class="ta" id="genOut" style="min-height:160px" readonly>${esc(S.gen)}</textarea>
         <div class="note" style="padding:8px 0 0">${S.bandLock
@@ -4229,6 +4244,7 @@ document.addEventListener('click',e=>{
     case 'gen':
     case 'gen-poll':
     case 'gen-market': buildAll(); break;
+    case 'gen-rand': genRand(); break;
     case 'atpl-toggle': S.atplEdit=!S.atplEdit; if(!S.atplEdit) S.atplDraft=null; render(); break;
     case 'atpl-save': {
       const el=$('#atplBox'); const v=el?el.value:'';
